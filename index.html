@@ -124,131 +124,119 @@
 
 <!-- POS -->
 <div class="panel" id="panel-pos">
-<div class="page-header"><div><h1 class="page-title">Point of Sale</h1><p class="page-subtitle">Add items to cart and complete sale</p></div></div>
-<div style="display:grid;grid-template-columns:1fr 340px;gap:20px;">
-  <div class="card">
-    <div class="card-header">
-      <div class="card-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>Shopping Cart</div>
-      <div style="display:flex;gap:8px;">
-        <button class="btn btn-danger btn-sm" onclick="clearCart()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/></svg>Empty Cart</button>
-      </div>
-    </div>
-    <div class="card-body" style="padding:0;">
-      <div style="max-height:400px;overflow-y:auto;">
-        <table class="data-table" style="margin:0;">
-          <thead><tr><th style="width:30px;">#</th><th>Drug</th><th>Batch</th><th>Class</th><th>Formulation</th><th style="width:60px;">Qty</th><th style="width:100px;">Unit Price</th><th style="width:110px;">Subtotal</th><th style="width:40px;"></th></tr></thead>
-          <tbody id="cartTableBody"></tbody>
-        </table>
-        <div id="cartEmptyState" class="empty-state" style="padding:30px 20px;">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:48px;height:48px;color:var(--text-faint);"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
-          <h4>Cart is empty</h4>
-          <p>Add items from the product selector on the right.</p>
+    <div class="page-header"><div><h1 class="page-title">Point of Sale</h1><p class="page-subtitle">Add items to cart and complete sale</p></div></div>
+    <div class="pos-wrapper">
+      <!-- CART -->
+      <div class="pos-cart-card">
+        <div class="pos-cart-header">
+          <span class="card-title">Shopping Cart</span>
+          <button class="btn btn-ghost btn-sm" onclick="clearCart()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/></svg> Clear</button>
+        </div>
+        <div class="pos-cart-list" id="cartContainer">
+          <div id="cartEmptyState" class="empty-state" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;padding:30px;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:48px;height:48px;color:var(--text-faint);"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+            <h4 style="margin-top:8px;">Cart is empty</h4>
+            <p style="color:var(--text-muted);">Add items from the panel on the right.</p>
+          </div>
+          <div id="cartItemsList"></div>
+        </div>
+        <div class="pos-cart-footer">
+          <div class="pos-total-row">
+            <span style="font-size:14px;color:var(--text-muted);">Total Items</span>
+            <span id="cartTotalItems" style="font-weight:600;font-size:16px;">0</span>
+          </div>
+          <div class="pos-total-row" style="margin-bottom:16px;">
+            <span style="font-size:16px;font-weight:600;">Grand Total</span>
+            <span id="cartGrandTotal" class="pos-grand-total">Ksh 0.00</span>
+          </div>
+          <button class="pos-checkout-btn" onclick="completeSale()" id="completeSaleBtn" disabled>Complete Sale</button>
         </div>
       </div>
-    </div>
-    <div class="card-body" style="border-top:1px solid var(--border);padding:16px 20px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+
+      <!-- CONTROLS -->
+      <div class="pos-control-card">
         <div>
-          <div style="font-size:12px;color:var(--text-muted);font-weight:500;">Total Items</div>
-          <div style="font-size:18px;font-weight:700;" id="cartTotalItems">0</div>
-        </div>
-        <div>
-          <div style="font-size:12px;color:var(--text-muted);font-weight:500;">Grand Total</div>
-          <div style="font-size:22px;font-weight:800;color:var(--brand);" id="cartGrandTotal">Ksh 0.00</div>
-        </div>
-        <div style="display:flex;gap:8px;">
-          <button class="btn btn-success" onclick="completeSale()" id="completeSaleBtn" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;"><polyline points="20 6 9 17 4 12"/></svg>Complete Sale</button>
-        </div>
-      </div>
-    </div>
-  </div>
-  <div>
-    <div class="card">
-      <div class="card-header"><div class="card-title">Add Product</div></div>
-      <div class="card-body">
-        <div class="form-group" style="margin-bottom:12px;">
-          <label>Search / Select Medicine</label>
-          <select id="posProductSelect" onchange="onProductSelect()" style="width:100%;padding:9px 12px;border:1px solid var(--border-strong);border-radius:var(--radius);font-size:13px;">
+          <label style="font-weight:600;font-size:13px;color:var(--text-secondary);display:block;margin-bottom:6px;">Add Product</label>
+          <select id="posProductSelect" onchange="onProductSelect()" class="pos-search-select">
             <option value="">-- Choose a medicine --</option>
-            ${DB.inventory.filter(m => m.qty > 0).map(m => `<option value="${m.id}">${m.name} ${m.brand ? '('+m.brand+')' : ''} — ${m.category} — Stock: ${m.qty}</option>`).join('')}
+            ${DB.inventory.filter(m => m.qty > 0).map(m => `<option value="${m.id}">${m.name} ${m.brand ? '('+m.brand+')' : ''} — Stock: ${m.qty}</option>`).join('')}
           </select>
         </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;font-size:12px;">
-          <div><span style="color:var(--text-muted);">Drug Name:</span> <strong id="posDrugName">—</strong></div>
+        
+        <div class="pos-product-preview" id="productPreview">
+          <div><span style="color:var(--text-muted);">Drug:</span> <strong id="posDrugName">—</strong></div>
           <div><span style="color:var(--text-muted);">Brand:</span> <strong id="posBrand">—</strong></div>
-          <div><span style="color:var(--text-muted);">Batch No:</span> <strong id="posBatch">—</strong></div>
+          <div><span style="color:var(--text-muted);">Batch:</span> <strong id="posBatch">—</strong></div>
           <div><span style="color:var(--text-muted);">Class:</span> <strong id="posClass">—</strong></div>
-          <div><span style="color:var(--text-muted);">Formulation:</span> <strong id="posFormulation">—</strong></div>
+          <div><span style="color:var(--text-muted);">Qty:</span> <strong id="posStockQty">—</strong></div>
           <div><span style="color:var(--text-muted);">Price/Unit:</span> <strong id="posPrice">Ksh 0.00</strong></div>
         </div>
-        <div class="form-group" style="margin-bottom:12px;">
-          <label>Quantity</label>
-          <input type="number" id="posQty" value="1" min="1" oninput="updatePosTotal()" style="width:100%;padding:9px 12px;border:1px solid var(--border-strong);border-radius:var(--radius);font-size:13px;">
-        </div>
-        <div class="form-group" style="margin-bottom:12px;">
-          <label>Selling Price Per Unit (Ksh)</label>
-          <input type="number" id="posPriceInput" value="0" min="0" step="0.01" oninput="updatePosTotal()" style="width:100%;padding:9px 12px;border:1px solid var(--border-strong);border-radius:var(--radius);font-size:13px;">
-        </div>
-        <button class="btn btn-primary" onclick="addToCart()" style="width:100%;" id="addToCartBtn" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Add to Cart</button>
-        <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);">
-          <div style="display:flex;justify-content:space-between;font-size:13px;">
-            <span style="color:var(--text-muted);">Item Subtotal:</span>
-            <span style="font-weight:600;" id="posLineTotal">Ksh 0.00</span>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div>
+            <label style="font-weight:600;font-size:13px;color:var(--text-secondary);display:block;margin-bottom:4px;">Quantity</label>
+            <input type="number" id="posQty" value="1" min="1" oninput="updatePosTotal()" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:10px;font-size:15px;">
+          </div>
+          <div>
+            <label style="font-weight:600;font-size:13px;color:var(--text-secondary);display:block;margin-bottom:4px;">Sell Price (Ksh)</label>
+            <input type="number" id="posPriceInput" value="0" min="0" step="0.01" oninput="updatePosTotal()" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:10px;font-size:15px;">
           </div>
         </div>
-      </div>
-    </div>
-    <div class="card" style="margin-top:12px;">
-      <div class="card-header"><div class="card-title">Sale Details</div></div>
-      <div class="card-body">
-        <div class="form-group" style="margin-bottom:8px;">
-          <label>Customer</label>
-          <input type="text" id="posCustomer" placeholder="Walk-in Customer" style="width:100%;padding:8px 12px;border:1px solid var(--border-strong);border-radius:var(--radius);font-size:13px;">
+
+        <button class="pos-add-btn" onclick="addToCart()" id="addToCartBtn" disabled>Add to Cart</button>
+
+        <div style="margin-top:4px;display:flex;justify-content:space-between;font-size:13px;border-top:1px solid var(--border);padding-top:16px;">
+          <span style="color:var(--text-muted);">Item Subtotal:</span>
+          <span id="posLineTotal" style="font-weight:600;">Ksh 0.00</span>
         </div>
-        <div class="form-group" style="margin-bottom:8px;">
-          <label>Mode of Payment (Split Allowed)</label>
+
+        <div style="margin-top:8px;border-top:1px solid var(--border);padding-top:16px;">
+          <label style="font-weight:600;font-size:13px;color:var(--text-secondary);display:block;margin-bottom:6px;">Customer</label>
+          <input type="text" id="posCustomer" placeholder="Walk-in Customer" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:10px;font-size:15px;">
+        </div>
+
+        <div>
+          <label style="font-weight:600;font-size:13px;color:var(--text-secondary);display:block;margin-bottom:6px;">Payment Method</label>
           <div id="paymentContainer">
-            <div style="display:flex;gap:8px;margin-bottom:4px;">
-              <select class="payment-method-select" style="flex:1;padding:8px 12px;border:1px solid var(--border-strong);border-radius:var(--radius);font-size:13px;">
-                <option value="">-- Select payment mode --</option>
+            <div style="display:flex;gap:8px;margin-bottom:6px;align-items:center;">
+              <select class="payment-method-select" style="flex:1;padding:10px;border:1px solid var(--border);border-radius:10px;font-size:14px;">
+                <option value="">Select</option>
                 <option value="CASH">Cash</option>
                 <option value="POCHI">Pochi (M-Pesa)</option>
                 <option value="NCBA BANK">NCBA Bank</option>
                 <option value="CARD">Card</option>
               </select>
-              <input type="number" class="payment-amount-input" placeholder="Amount" step="0.01" min="0" style="width:100px;padding:8px 12px;border:1px solid var(--border-strong);border-radius:var(--radius);font-size:13px;">
-              <input type="text" class="payment-ref-input" placeholder="Ref (Optional)" style="flex:0.8;padding:8px 12px;border:1px solid var(--border-strong);border-radius:var(--radius);font-size:13px;">
+              <input type="number" class="payment-amount-input" placeholder="Amt" step="0.01" min="0" style="width:90px;padding:10px;border:1px solid var(--border);border-radius:10px;font-size:14px;">
+              <input type="text" class="payment-ref-input" placeholder="Ref" style="width:80px;padding:10px;border:1px solid var(--border);border-radius:10px;font-size:14px;">
             </div>
           </div>
-          <button type="button" class="btn btn-secondary btn-sm" onclick="addSplitPaymentRow()" style="margin-top:4px;">+ Add Split Payment</button>
+          <button type="button" class="btn btn-secondary btn-sm" onclick="addSplitPaymentRow()" style="font-size:12px;padding:6px 12px;">+ Add Split</button>
         </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-          <div class="form-group">
-            <label>Date</label>
-            <input type="date" id="posDate" style="width:100%;padding:8px 12px;border:1px solid var(--border-strong);border-radius:var(--radius);font-size:13px;">
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div>
+            <label style="font-weight:600;font-size:13px;color:var(--text-secondary);display:block;margin-bottom:4px;">Date</label>
+            <input type="date" id="posDate" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:10px;font-size:14px;">
           </div>
-          <div class="form-group">
-            <label>Time</label>
-            <input type="time" id="posTime" style="width:100%;padding:8px 12px;border:1px solid var(--border-strong);border-radius:var(--radius);font-size:13px;">
+          <div>
+            <label style="font-weight:600;font-size:13px;color:var(--text-secondary);display:block;margin-bottom:4px;">Time</label>
+            <input type="time" id="posTime" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:10px;font-size:14px;">
           </div>
         </div>
-        <div class="form-group">
-          <label>Receipt No.</label>
-          <input type="text" id="posReceiptNumber" readonly style="width:100%;padding:8px 12px;border:1px solid var(--border-strong);border-radius:var(--radius);font-size:13px;font-weight:600;background:var(--bg);text-align:center;">
+        <div>
+          <label style="font-weight:600;font-size:13px;color:var(--text-secondary);display:block;margin-bottom:4px;">Receipt No.</label>
+          <input type="text" id="posReceiptNumber" readonly style="width:100%;padding:10px;border:1px solid var(--border);border-radius:10px;font-size:14px;font-weight:600;background:var(--bg);text-align:center;">
         </div>
       </div>
     </div>
-  </div>
 </div>
-</div>
-
 <!-- SALES HISTORY -->
 <div class="panel" id="panel-sales">
 <div class="page-header"><div><h1 class="page-title">Sales Transactions</h1><p class="page-subtitle" id="salesSubtitle">Complete history of all sales</p></div>
 <div class="page-actions">
 <input type="file" id="salesImport" class="file-input" accept=".xlsx,.xls" onchange="handleImport(event, 'sales')">
 <button class="btn btn-secondary" onclick="document.getElementById('salesImport').click()">Import Sales</button>
-<button class="btn btn-secondary" onclick="exportData('sales')">Export</button>
+<button class="btn btn-secondary" onclick="exportSalesToExcel()">Export</button>
 </div>
 </div>
 <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;padding:16px 20px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);margin-bottom:16px;">
@@ -481,22 +469,22 @@
 
 <!-- EXPENSES -->
 <div class="panel" id="panel-expenses">
-<div class="page-header"><div><h1 class="page-title">Expenses</h1><p class="page-subtitle">Track operational costs with time filters</p></div>
-<div class="page-actions">
-<input type="file" id="expensesImport" class="file-input" accept=".xlsx,.xls" onchange="handleImport(event, 'expenses')">
-<button class="btn btn-secondary" onclick="document.getElementById('expensesImport').click()">Import</button>
-<button class="btn btn-secondary" onclick="exportData('expenses')">Export</button>
-<button class="btn btn-primary" onclick="showExpenseModal()">+ Add Expense</button>
-</div></div>
-<div style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;padding:12px 16px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);margin-bottom:16px;">
-<select id="expensesTimeFilter" onchange="renderExpenses()" style="padding:8px 12px;border:1px solid var(--border-strong);border-radius:var(--radius);font-size:13px;">
-<option value="today">Today</option><option value="yesterday">Yesterday</option><option value="thisWeek">This Week</option><option value="lastWeek">Last Week</option><option value="thisMonth">This Month</option><option value="lastMonth">Last Month</option><option value="thisYear">This Year</option><option value="all">All Time</option>
-</select>
-<input type="date" id="expensesDateFrom" onchange="renderExpenses()" style="padding:8px 12px;border:1px solid var(--border-strong);border-radius:var(--radius);font-size:13px;">
-<span style="color:var(--text-muted);">to</span>
-<input type="date" id="expensesDateTo" onchange="renderExpenses()" style="padding:8px 12px;border:1px solid var(--border-strong);border-radius:var(--radius);font-size:13px;">
-</div>
-<div class="card"><div class="card-body" id="expensesContent"></div></div>
+    <div class="page-header"><div><h1 class="page-title">Expenses</h1><p class="page-subtitle">Track operational costs with time filters</p></div>
+    <div class="page-actions">
+        <input type="file" id="expensesImport" class="file-input" accept=".xlsx,.xls" onchange="handleImport(event, 'expenses')">
+        <button class="btn btn-secondary" onclick="document.getElementById('expensesImport').click()">Import</button>
+        <button class="btn btn-secondary" onclick="exportData('expenses')">Export</button>
+        <button class="btn btn-primary" onclick="showExpenseModal()">+ Add Expense</button>
+    </div></div>
+    <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;padding:12px 16px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);margin-bottom:16px;">
+        <select id="expensesTimeFilter" onchange="renderExpenses()" style="padding:8px 12px;border:1px solid var(--border-strong);border-radius:var(--radius);font-size:13px;">
+            <option value="today">Today</option><option value="yesterday">Yesterday</option><option value="thisWeek">This Week</option><option value="lastWeek">Last Week</option><option value="thisMonth">This Month</option><option value="lastMonth">Last Month</option><option value="thisYear">This Year</option><option value="all">All Time</option>
+        </select>
+        <input type="date" id="expensesDateFrom" onchange="renderExpenses()" style="padding:8px 12px;border:1px solid var(--border-strong);border-radius:var(--radius);font-size:13px;">
+        <span style="color:var(--text-muted);">to</span>
+        <input type="date" id="expensesDateTo" onchange="renderExpenses()" style="padding:8px 12px;border:1px solid var(--border-strong);border-radius:var(--radius);font-size:13px;">
+    </div>
+    <div class="card"><div class="card-body" id="expensesContent"></div></div>
 </div>
 
 <!-- PAYMENTS -->

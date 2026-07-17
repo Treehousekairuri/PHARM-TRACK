@@ -1,41 +1,13 @@
 /* ============================================================
 STORAGE SERVICE - Unlimited storage
 ============================================================ */
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-app.js";
-import { getDatabase, ref, set, get, remove } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-database.js";
-
-const firebaseConfig = {
-  apiKey: "AIzaSyDInX4rFSX6iR_E9zlaZ8zezhAriFu5T2c",
-  authDomain: "pharmtrack-dda5b.firebaseapp.com",
-  databaseURL: "https://pharmtrack-dda5b-default-rtdb.firebaseio.com",
-  projectId: "pharmtrack-dda5b",
-  storageBucket: "pharmtrack-dda5b.firebasestorage.app",
-  messagingSenderId: "832368803604",
-  appId: "1:832368803604:web:4309b9e74836d5c07d4c01",
-  measurementId: "G-WB6X6QW84S"
-};
-
-const app = initializeApp(firebaseConfig);
-const database = getDatabase(app);
-
 const StorageService = {
-    getUserEmail() {
-        return currentUser?.email?.replace(/\./g, '_') || 'guest';
-    },
-    async put(table, item) {
-        const userEmail = this.getUserEmail();
-        await set(ref(database, `users/${userEmail}/${table}/${item.id}`), item);
-    },
-    async getAll(table) {
-        const userEmail = this.getUserEmail();
-        const snapshot = await get(ref(database, `users/${userEmail}/${table}`));
-        const data = snapshot.val();
-        return data ? Object.values(data) : [];
-    },
-    async delete(table, id) {
-        const userEmail = this.getUserEmail();
-        await remove(ref(database, `users/${userEmail}/${table}/${id}`));
-    }
+prefix: 'pharmtrack_',
+getAll(key) { try { return JSON.parse(localStorage.getItem(this.prefix + key) || '[]'); } catch(e) { return []; } },
+get(key, id) { return this.getAll(key).find(item => item.id === id) || null; },
+put(key, item) { const all = this.getAll(key); const idx = all.findIndex(x => x.id === item.id); if (idx >= 0) all[idx] = item; else all.push(item); localStorage.setItem(this.prefix + key, JSON.stringify(all)); },
+delete(key, id) { const all = this.getAll(key).filter(x => x.id !== id); localStorage.setItem(this.prefix + key, JSON.stringify(all)); },
+clear(key) { localStorage.removeItem(this.prefix + key); }
 };
 
 /* ============================================================
@@ -513,6 +485,15 @@ function getCurrentReceiptNumber() { return parseInt(localStorage.getItem(Storag
 /* ============================================================
 POINT OF SALE
 ============================================================ */
+// ============================================================
+// RECEIPT NUMBER COUNTER
+// ============================================================
+function getNextReceiptNumber() { let counter = parseInt(localStorage.getItem(StorageService.prefix + 'receipt_counter') || '0'); counter++; localStorage.setItem(StorageService.prefix + 'receipt_counter', counter.toString()); return counter; }
+function getCurrentReceiptNumber() { return parseInt(localStorage.getItem(StorageService.prefix + 'receipt_counter') || '0') + 1; }
+
+// ============================================================
+// POINT OF SALE - Updated for new iOS layout
+// ============================================================
 let posCart = [];
 
 function initPOS() {
@@ -523,42 +504,39 @@ posCart = [];
 renderCart();
 updateCartTotals();
 updatePOSProductSelect();
-// Reset payment container to a single row
 document.getElementById('paymentContainer').innerHTML = `
-<div style="display:flex;gap:8px;margin-bottom:4px;">
-    <select class="payment-method-select" style="flex:1;padding:8px 12px;border:1px solid var(--border-strong);border-radius:var(--radius);font-size:13px;">
-        <option value="">-- Select payment mode --</option>
+<div style="display:flex;gap:8px;margin-bottom:6px;align-items:center;">
+    <select class="payment-method-select" style="flex:1;padding:10px;border:1px solid var(--border);border-radius:10px;font-size:14px;">
+        <option value="">Select</option>
         <option value="CASH">Cash</option>
         <option value="POCHI">Pochi (M-Pesa)</option>
         <option value="NCBA BANK">NCBA Bank</option>
         <option value="CARD">Card</option>
     </select>
-    <input type="number" class="payment-amount-input" placeholder="Amount" step="0.01" min="0" style="width:100px;padding:8px 12px;border:1px solid var(--border-strong);border-radius:var(--radius);font-size:13px;">
-    <input type="text" class="payment-ref-input" placeholder="Ref (Optional)" style="flex:0.8;padding:8px 12px;border:1px solid var(--border-strong);border-radius:var(--radius);font-size:13px;">
+    <input type="number" class="payment-amount-input" placeholder="Amt" step="0.01" min="0" style="width:90px;padding:10px;border:1px solid var(--border);border-radius:10px;font-size:14px;">
+    <input type="text" class="payment-ref-input" placeholder="Ref" style="width:80px;padding:10px;border:1px solid var(--border);border-radius:10px;font-size:14px;">
 </div>
 `;
 }
 
-/* ============================================================
-SPLIT PAYMENT HANDLER
-============================================================ */
 function addSplitPaymentRow() {
     const container = document.getElementById('paymentContainer');
     const newRow = document.createElement('div');
     newRow.style.display = 'flex';
     newRow.style.gap = '8px';
-    newRow.style.marginBottom = '4px';
+    newRow.style.marginBottom = '6px';
+    newRow.style.alignItems = 'center';
     newRow.innerHTML = `
-        <select class="payment-method-select" style="flex:1;padding:8px 12px;border:1px solid var(--border-strong);border-radius:var(--radius);font-size:13px;">
-            <option value="">-- Select payment mode --</option>
+        <select class="payment-method-select" style="flex:1;padding:10px;border:1px solid var(--border);border-radius:10px;font-size:14px;">
+            <option value="">Select</option>
             <option value="CASH">Cash</option>
             <option value="POCHI">Pochi (M-Pesa)</option>
             <option value="NCBA BANK">NCBA Bank</option>
             <option value="CARD">Card</option>
         </select>
-        <input type="number" class="payment-amount-input" placeholder="Amount" step="0.01" min="0" style="width:100px;padding:8px 12px;border:1px solid var(--border-strong);border-radius:var(--radius);font-size:13px;">
-        <input type="text" class="payment-ref-input" placeholder="Ref (Optional)" style="flex:0.8;padding:8px 12px;border:1px solid var(--border-strong);border-radius:var(--radius);font-size:13px;">
-        <button type="button" class="btn btn-danger btn-sm" onclick="this.parentElement.remove()">✕</button>
+        <input type="number" class="payment-amount-input" placeholder="Amt" step="0.01" min="0" style="width:90px;padding:10px;border:1px solid var(--border);border-radius:10px;font-size:14px;">
+        <input type="text" class="payment-ref-input" placeholder="Ref" style="width:80px;padding:10px;border:1px solid var(--border);border-radius:10px;font-size:14px;">
+        <button type="button" class="btn btn-danger btn-sm" onclick="this.parentElement.remove()" style="padding:6px 10px;border-radius:8px;">✕</button>
     `;
     container.appendChild(newRow);
 }
@@ -567,7 +545,7 @@ function updatePOSProductSelect() {
 const select = document.getElementById('posProductSelect');
 const currentVal = select.value;
 select.innerHTML = '<option value="">-- Choose a medicine --</option>' + 
-DB.inventory.filter(m => m.qty > 0).map(m => `<option value="${m.id}">${m.name} ${m.brand ? '('+m.brand+')' : ''} — ${m.category} — Stock: ${m.qty}</option>`).join('');
+DB.inventory.filter(m => m.qty > 0).map(m => `<option value="${m.id}">${m.name} ${m.brand ? '('+m.brand+')' : ''} — Stock: ${m.qty}</option>`).join('');
 select.value = currentVal;
 if (currentVal) onProductSelect();
 }
@@ -583,7 +561,7 @@ document.getElementById('posDrugName').textContent = '—';
 document.getElementById('posBrand').textContent = '—';
 document.getElementById('posBatch').textContent = '—';
 document.getElementById('posClass').textContent = '—';
-document.getElementById('posFormulation').textContent = '—';
+document.getElementById('posStockQty').textContent = '—';
 document.getElementById('posPrice').textContent = 'Ksh 0.00';
 document.getElementById('posLineTotal').textContent = 'Ksh 0.00';
 addBtn.disabled = true;
@@ -595,11 +573,11 @@ document.getElementById('posDrugName').textContent = med.name;
 document.getElementById('posBrand').textContent = med.brand || '—';
 document.getElementById('posBatch').textContent = med.batch || '—';
 document.getElementById('posClass').textContent = med.category || '—';
-document.getElementById('posFormulation').textContent = med.category || '—';
+document.getElementById('posStockQty').textContent = med.qty;
 document.getElementById('posPrice').textContent = DateHelper.formatKSh(med.price || 0);
-// Pre-fill the price input with the default selling price, but allow user to change it
 priceInput.value = med.price || 0;
 qtyInput.max = med.qty;
+qtyInput.value = 1;
 addBtn.disabled = false;
 updatePosTotal();
 }
@@ -632,7 +610,7 @@ if (existingItem) {
 const newQty = existingItem.qty + qty;
 if (newQty > med.qty) { showToast(`Cannot add ${qty}. You already have ${existingItem.qty} in cart. Available: ${med.qty}`, 'error'); return; }
 existingItem.qty = newQty;
-existingItem.price = price; // Update price to the latest entered price
+existingItem.price = price;
 } else {
 posCart.push({ medId: med.id, name: med.name, brand: med.brand || '', batch: med.batch || '', category: med.category || '', formulation: med.category || '', qty: qty, price: price, costPrice: med.costPrice || 0 });
 }
@@ -645,45 +623,50 @@ updatePosTotal();
 }
 
 function renderCart() {
-const tbody = document.getElementById('cartTableBody');
-const emptyState = document.getElementById('cartEmptyState');
-if (posCart.length === 0) { tbody.innerHTML = ''; emptyState.style.display = 'block'; document.getElementById('completeSaleBtn').disabled = true; return; }
-emptyState.style.display = 'none';
-document.getElementById('completeSaleBtn').disabled = false;
-tbody.innerHTML = '';
-posCart.forEach((item, index) => {
-const subtotal = item.qty * item.price;
-const tr = document.createElement('tr');
-tr.innerHTML = `
-<td style="padding:8px 10px;text-align:center;font-weight:600;color:var(--text-muted);">${index + 1}</td>
-<td style="padding:8px 10px;"><div style="font-weight:600;color:var(--text);">${item.name}</div>${item.brand ? `<div style="font-size:11px;color:var(--text-faint);">${item.brand}</div>` : ''}</td>
-<td style="padding:8px 10px;font-size:12px;color:var(--text-muted);">${item.batch}</td>
-<td style="padding:8px 10px;font-size:12px;color:var(--text-muted);">${item.category}</td>
-<td style="padding:8px 10px;font-size:12px;color:var(--text-muted);">${item.formulation}</td>
-<td style="padding:8px 10px;text-align:center;">
-<input type="number" value="${item.qty}" min="1" max="${DB.inventory.find(m => m.id === item.medId)?.qty || 0}" 
-onchange="updateCartItemQty(${index}, this.value)" 
-style="width:50px;padding:4px 6px;border:1px solid var(--border);border-radius:4px;text-align:center;font-size:13px;">
-</td>
-<td style="padding:8px 10px;text-align:right;font-size:13px;">${DateHelper.formatKSh(item.price)}</td>
-<td style="padding:8px 10px;text-align:right;font-weight:600;font-variant-numeric:tabular-nums;">${DateHelper.formatKSh(subtotal)}</td>
-<td style="padding:8px 10px;text-align:center;">
-<span onclick="removeFromCart(${index})" style="cursor:pointer;color:var(--danger);font-size:18px;">×</span>
-</td>
-`;
-tbody.appendChild(tr);
-});
+    const listContainer = document.getElementById('cartItemsList');
+    const emptyState = document.getElementById('cartEmptyState');
+    if (posCart.length === 0) { 
+        listContainer.innerHTML = ''; 
+        emptyState.style.display = 'flex'; 
+        document.getElementById('completeSaleBtn').disabled = true; 
+        return; 
+    }
+    emptyState.style.display = 'none';
+    document.getElementById('completeSaleBtn').disabled = false;
+    
+    let html = '';
+    posCart.forEach((item, index) => {
+        const subtotal = item.qty * item.price;
+        const availableQty = DB.inventory.find(m => m.id === item.medId)?.qty || 0;
+        html += `
+        <div class="pos-item-row">
+            <div class="pos-item-info">
+                <div class="pos-item-name">${item.name}</div>
+                <div class="pos-item-detail">${item.brand ? item.brand + ' • ' : ''}Batch: ${item.batch} • ${item.category}</div>
+            </div>
+            <div class="pos-item-qty">
+                <button class="pos-stepper-btn" onclick="updateCartItemQty(${index}, ${item.qty - 1})">−</button>
+                <input type="text" value="${item.qty}" readonly>
+                <button class="pos-stepper-btn" onclick="updateCartItemQty(${index}, ${item.qty + 1})">+</button>
+            </div>
+            <div class="pos-item-price">${DateHelper.formatKSh(subtotal)}</div>
+            <div class="pos-item-remove" onclick="removeFromCart(${index})"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></div>
+        </div>
+        `;
+    });
+    listContainer.innerHTML = html;
+    updateCartTotals();
 }
 
 function updateCartItemQty(index, newQty) {
-const qty = parseInt(newQty) || 0;
-if (qty < 1) { removeFromCart(index); return; }
-const item = posCart[index];
-const med = DB.inventory.find(m => m.id === item.medId);
-if (med && qty > med.qty) { showToast(`Cannot update. Available: ${med.qty}`, 'error'); renderCart(); updateCartTotals(); return; }
-item.qty = qty;
-renderCart();
-updateCartTotals();
+    const qty = parseInt(newQty) || 0;
+    if (qty < 1) { removeFromCart(index); return; }
+    const item = posCart[index];
+    const med = DB.inventory.find(m => m.id === item.medId);
+    if (med && qty > med.qty) { showToast(`Cannot update. Available: ${med.qty}`, 'error'); renderCart(); updateCartTotals(); return; }
+    item.qty = qty;
+    renderCart();
+    updateCartTotals();
 }
 
 function removeFromCart(index) {
@@ -716,10 +699,8 @@ function completeSale() {
     const date = document.getElementById('posDate').value;
     const time = document.getElementById('posTime').value;
     const receiptNumber = document.getElementById('posReceiptNumber').value;
-
     if (!date) { showToast('Please select a date.', 'error'); return; }
-
-    // Calculate total
+    
     let total = 0;
     const lines = posCart.map(item => {
         const subtotal = item.qty * item.price;
@@ -727,64 +708,63 @@ function completeSale() {
         return { productId: item.medId, productName: item.name, productBrand: item.brand, description: item.name, qty: item.qty, rate: item.price, amount: subtotal, serviceDate: date, costPrice: item.costPrice };
     });
 
-    // Process Split Payments
+    // ---- NEW PAYMENT LOGIC START ----
     let totalPayment = 0;
-    let paymentDesc = [];
+    let paymentMethodStrings = []; // e.g. ["POCHI", "CASH"]
+    let paymentDetailStrings = []; // e.g. ["POCHI: Ksh 200.00 (Ref: 123)", "CASH: Ksh 300.00"]
+
     const selects = document.querySelectorAll('.payment-method-select');
     const amounts = document.querySelectorAll('.payment-amount-input');
     const refs = document.querySelectorAll('.payment-ref-input');
-
+    
     for(let i=0; i<selects.length; i++) {
         let method = selects[i].value;
         let amount = parseFloat(amounts[i].value) || 0;
         let ref = refs[i].value.trim();
         if(method && amount > 0) {
-            if(method !== 'CASH' && !ref) { showToast('Please enter a reference for non-cash split payments.', 'error'); return; }
+            if(method !== 'CASH' && !ref) { showToast('Please enter a reference for non-cash payments.', 'error'); return; }
             totalPayment += amount;
-            paymentDesc.push(`${method}: ${DateHelper.formatKSh(amount)}${ref ? ' (Ref: '+ref+')' : ''}`);
+            paymentMethodStrings.push(method);
+            paymentDetailStrings.push(`${method}: ${DateHelper.formatKSh(amount)}${ref ? ' (Ref: '+ref+')' : ''}`);
         }
     }
 
-    // Fallback to single payment if no split rows filled
-    if(paymentDesc.length === 0) {
-        // Check if a single method was selected in a hidden or non-split way
-        showToast('Please enter at least one payment method and amount.', 'error'); 
-        return;
-    }
-
+    if(paymentDetailStrings.length === 0) { showToast('Please enter at least one payment method and amount.', 'error'); return; }
     if(totalPayment < total) { showToast(`Total payment (${DateHelper.formatKSh(totalPayment)}) is less than the total bill (${DateHelper.formatKSh(total)}).`, 'error'); return; }
+    // ---- NEW PAYMENT LOGIC END ----
 
     const receiptNum = getNextReceiptNumber();
     document.getElementById('posReceiptNumber').value = 'SR-' + String(receiptNum).padStart(4, '0');
 
-    const sale = {
-        id: genId('sal_'),
-        date,
-        receiptNumber: receiptNum,
-        customer,
-        paymentMethod: paymentDesc.join(' | '),
-        payment: 'SPLIT',
-        reference: 'Split Payment',
-        lines,
-        total,
-        subtotal: total,
-        tax: 0,
-        discount: 0,
-        txCode: 'SPLIT',
-        status: 'Paid',
-        createdAt: new Date().toISOString()
+    const sale = { 
+        id: genId('sal_'), 
+        date, 
+        receiptNumber: receiptNum, 
+        customer, 
+        paymentMethod: paymentMethodStrings.join(', '), // Shows "POCHI, CASH" in Reference column
+        reference: paymentDetailStrings.join(' | '),    // Shows "POCHI: Ksh 200.00 (Ref: 123) | CASH: Ksh 300.00" below it
+        payment: 'SPLIT', 
+        lines, 
+        total, 
+        subtotal: total, 
+        tax: 0, 
+        discount: 0, 
+        txCode: 'SPLIT', 
+        status: 'Paid', 
+        createdAt: new Date().toISOString() 
     };
+
     lines.forEach(line => { const med = DB.inventory.find(m => m.id === line.productId); if (med) { med.qty -= line.qty; StorageService.put('inventory', med); } });
     StorageService.put('sales', sale);
-    const invoice = { id: genId('inv_'), saleId: sale.id, receiptNumber: sale.receiptNumber, date: sale.date, customer: customer, total, payment: paymentDesc.join(' | '), reference: 'Split Payment', status: 'Paid', createdAt: new Date().toISOString() };
+    const invoice = { id: genId('inv_'), saleId: sale.id, receiptNumber: sale.receiptNumber, date: sale.date, customer: customer, total, payment: paymentDetailStrings.join(' | '), reference: paymentMethodStrings.join(', '), status: 'Paid', createdAt: new Date().toISOString() };
     StorageService.put('invoices', invoice);
-    logActivity('sale', `Sale receipt SR-${String(receiptNum).padStart(4, '0')} created for ${customer} — ${DateHelper.formatKES(total)}`);
+    logActivity('sale', `Sale receipt SR-${String(receiptNum).padStart(4, '0')} created for ${customer} — ${DateHelper.formatKSh(total)}`);
+    
     showToast(`Receipt SR-${String(receiptNum).padStart(4, '0')} saved successfully!`, 'success');
     posCart = []; renderCart(); updateCartTotals();
     currentReceiptSaleId = sale.id;
     navigate('receipt');
 }
-
 /* ============================================================
 SALES TRANSACTIONS
 ============================================================ */
@@ -812,61 +792,80 @@ sales.sort((a, b) => { if (b.date !== a.date) return b.date.localeCompare(a.date
 return sales;
 }
 
-function renderSalesTransactions() {
-filteredSales = getFilteredSalesData();
-const totalPages = Math.max(1, Math.ceil(filteredSales.length / SALES_PER_PAGE));
-if (salesCurrentPage > totalPages) salesCurrentPage = totalPages;
-if (salesCurrentPage < 1) salesCurrentPage = 1;
-const startIdx = (salesCurrentPage - 1) * SALES_PER_PAGE;
-const endIdx = Math.min(startIdx + SALES_PER_PAGE, filteredSales.length);
-const pageSales = filteredSales.slice(startIdx, endIdx);
-const tbody = document.getElementById('salesTableBody');
-const emptyState = document.getElementById('salesEmptyState');
-if (!tbody) return;
-tbody.innerHTML = '';
-if (filteredSales.length === 0) { emptyState.style.display = 'block'; document.getElementById('salesGrandTotal').textContent = 'Ksh 0.00'; document.getElementById('salesFooterTotal').textContent = 'Ksh 0.00'; document.getElementById('salesPageInfo').textContent = '0-0 of 0'; return; }
-emptyState.style.display = 'none';
-let pageTotal = 0;
-let grandTotal = 0;
-filteredSales.forEach(s => grandTotal += s.total || 0);
-pageSales.forEach((s) => {
-const receiptNo = `SR-${String(s.receiptNumber || '0').padStart(4, '0')}`;
-const customer = s.customer || 'Walk-in Customer';
-const amount = s.total || 0;
-pageTotal += amount;
-const timeStr = s.createdAt ? new Date(s.createdAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '—';
-const reference = s.reference || s.txCode || '—';
-const tr = document.createElement('tr');
-tr.innerHTML = `
-<td style="padding:12px 14px;vertical-align:middle;"><input type="checkbox" class="sales-row-checkbox" data-id="${s.id}"></td>
-<td style="padding:12px 14px;font-size:13px;border-bottom:1px solid var(--border);color:var(--text-secondary);">${DateHelper.formatDateShort(s.date)}</td>
-<td style="padding:12px 14px;font-size:13px;border-bottom:1px solid var(--border);color:var(--text-secondary);">${timeStr}</td>
-<td style="padding:12px 14px;font-size:13px;border-bottom:1px solid var(--border);color:var(--text-secondary);"><span style="font-weight:600;color:var(--brand);font-size:12px;">${receiptNo}</span></td>
-<td style="padding:12px 14px;font-size:13px;border-bottom:1px solid var(--border);color:var(--text-secondary);"><span style="font-weight:500;color:var(--text);">${customer}</span></td>
-<td style="padding:12px 14px;font-size:12px;color:var(--text-muted);border-bottom:1px solid var(--border);">${reference}</td>
-<td style="padding:12px 14px;font-size:13px;border-bottom:1px solid var(--border);color:var(--text-secondary);text-align:right;font-weight:600;font-variant-numeric:tabular-nums;">${DateHelper.formatKSh(amount)}</td>
-<td style="padding:12px 14px;font-size:13px;border-bottom:1px solid var(--border);color:var(--text-secondary);"><div style="display:flex;align-items:center;gap:6px;"><span style="width:18px;height:18px;border-radius:50%;background:var(--success);display:inline-flex;align-items:center;justify-content:center;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="width:10px;height:10px;color:#fff;"><polyline points="20 6 9 17 4 12"/></svg></span><span style="font-size:12px;font-weight:500;color:var(--text);">Paid</span></div></td>
-<td style="padding:12px 14px;font-size:13px;border-bottom:1px solid var(--border);color:var(--text-secondary);text-align:right;"><div style="display:flex;align-items:center;gap:4px;font-size:12px;justify-content:flex-end;"><span class="action-link" onclick="viewSaleReceipt('${s.id}')" style="color:var(--brand);font-weight:500;cursor:pointer;padding:2px 4px;border-radius:4px;">View</span><span class="action-link print" onclick="printSaleReceipt('${s.id}')" style="color:var(--text-secondary);font-weight:500;cursor:pointer;padding:2px 4px;border-radius:4px;">Print</span><span class="action-dropdown" onclick="showSaleActions('${s.id}')" style="color:var(--text-muted);cursor:pointer;padding:2px 4px;">▾</span></div></td>
-`;
-tbody.appendChild(tr);
-});
-document.getElementById('salesGrandTotal').textContent = DateHelper.formatKSh(grandTotal);
-document.getElementById('salesFooterTotal').textContent = DateHelper.formatKSh(pageTotal);
-document.getElementById('salesPageInfo').textContent = `${startIdx + 1}-${endIdx} of ${filteredSales.length}`;
-document.getElementById('salesPageFirst').disabled = salesCurrentPage === 1;
-document.getElementById('salesPagePrev').disabled = salesCurrentPage === 1;
-document.getElementById('salesPageNext').disabled = salesCurrentPage === totalPages;
-document.getElementById('salesPageLast').disabled = salesCurrentPage === totalPages;
+function renderSalesTable(filtered) {
+    const tbody = document.getElementById('salesTableBody');
+    const emptyState = document.getElementById('salesEmptyState');
+    
+    if (!filtered || filtered.length === 0) {
+        tbody.innerHTML = '';
+        emptyState.style.display = 'block';
+        document.getElementById('salesGrandTotal').textContent = 'Ksh 0.00';
+        return;
+    }
+    emptyState.style.display = 'none';
+
+    const grandTotal = filtered.reduce((s, x) => s + (x.total || 0), 0);
+    document.getElementById('salesGrandTotal').textContent = DateHelper.formatKSh(grandTotal);
+
+    let html = '';
+    filtered.forEach((s, i) => {
+        const invNum = `SR-${String(s.receiptNumber || 0).padStart(4, '0')}`;
+        const time = s.createdAt ? new Date(s.createdAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '--:--';
+        
+        // ***** REFERENCE COLUMN LOGIC STARTS HERE *****
+        let refMethod = s.paymentMethod || 'N/A';
+        let refDetail = (s.reference && s.reference !== 'Split Payment' && s.reference !== s.paymentMethod) ? s.reference : '';
+        let refHtml = `<div style="font-weight:500;font-size:13px;color:var(--text);">${refMethod}</div>`;
+        if(refDetail) {
+            refHtml += `<div style="font-size:11px;color:var(--text-muted);margin-top:2px;word-break:break-all;">${refDetail}</div>`;
+        }
+        // ***** REFERENCE COLUMN LOGIC ENDS HERE *****
+
+        html += `
+        <tr>
+            <td style="padding:10px 14px;"><input type="checkbox" class="sales-checkbox" value="${s.id}"></td>
+            <td style="padding:10px 14px;">${DateHelper.formatDateShort(s.date)}</td>
+            <td style="padding:10px 14px;">${time}</td>
+            <td style="padding:10px 14px;"><span class="invoice-link" onclick="viewSaleReceipt('${s.id}')">${invNum}</span></td>
+            <td style="padding:10px 14px;">${s.customer || 'Walk-in Customer'}</td>
+            <td style="padding:10px 14px;">${refHtml}</td>
+            <td style="padding:10px 14px;text-align:right;font-weight:600;">${DateHelper.formatKSh(s.total)}</td>
+            <td style="padding:10px 14px;"><span class="badge badge-paid">✔ Paid</span></td>
+            <td style="padding:10px 14px;text-align:right;">
+                <button class="btn btn-ghost btn-sm" onclick="viewSaleReceipt('${s.id}')">View</button>
+                <button class="btn btn-ghost btn-sm" onclick="printReceiptById('${s.id}')">Print</button>
+            </td>
+        </tr>
+        `;
+    });
+    tbody.innerHTML = html;
 }
 
-function applySalesFilters() { salesCurrentPage = 1; renderSalesTransactions(); }
-function goToSalesPage(action) {
-const totalPages = Math.max(1, Math.ceil(filteredSales.length / SALES_PER_PAGE));
-if (action === 'first') salesCurrentPage = 1;
-else if (action === 'prev') salesCurrentPage = Math.max(1, salesCurrentPage - 1);
-else if (action === 'next') salesCurrentPage = Math.min(totalPages, salesCurrentPage + 1);
-else if (action === 'last') salesCurrentPage = totalPages;
-renderSalesTransactions();
+function applySalesFilters() {
+    const typeFilter = document.getElementById('salesTypeFilter').value;
+    const dateFilter = document.getElementById('salesDateFilter').value;
+    const from = document.getElementById('salesDateFrom').value;
+    const to = document.getElementById('salesDateTo').value;
+    const customerSearch = (document.getElementById('salesCustomerFilter').value || '').toLowerCase();
+
+    let filtered = [...DB.sales];
+
+    // FIXED: Uses .includes() to match "POCHI, CASH" instead of requiring exact match
+    if (typeFilter !== 'all') {
+        filtered = filtered.filter(s => (s.paymentMethod || s.payment || '').includes(typeFilter));
+    }
+
+    const range = DateHelper.getRange(dateFilter, from, to);
+    filtered = filtered.filter(s => s.date >= range.from && s.date <= range.to);
+
+    if (customerSearch) {
+        filtered = filtered.filter(s => (s.customer || '').toLowerCase().includes(customerSearch));
+    }
+
+    // Sort by newest first
+    filtered.sort((a,b) => (b.createdAt || b.date).localeCompare(a.createdAt || a.date));
+    
+    renderSalesTable(filtered);
 }
 
 function toggleSelectAllSales() {
@@ -1073,6 +1072,7 @@ navigate('stock');
 INVENTORY CRUD - With Stock Out detection
 ============================================================ */
 function renderTable() {
+     const activeInventory = DB.inventory.filter(m => m.qty > 0); 
 const tbody = document.getElementById('tableBody');
 const empty = document.getElementById('emptyState');
 const footer = document.getElementById('inventoryTableFooter');
@@ -1220,19 +1220,60 @@ showModal(`${med.name} - Stock Details`, html);
 THRESHOLDS - Enhanced with Units label and accurate Low Stock tracking
 ============================================================ */
 function renderThresholds() {
-const container = document.getElementById('thresholdContent');
-const thresholds = ThresholdService.get();
-let html = `<div style="margin-bottom:16px;"><p style="color:var(--text-secondary);font-size:13px;">Set minimum stock levels per formulation category. <strong>Units:</strong> For Tablets/Capsules, this is the count of individual pills. For Syrups/Suspensions, this is the number of bottles.</p></div>
-<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;">`;
-Object.keys(thresholds).forEach(cat => {
-html += `<div style="display:flex;align-items:center;gap:8px;padding:12px 16px;background:var(--bg);border-radius:var(--radius);border:1px solid var(--border);">
-<label style="font-size:13px;font-weight:500;color:var(--text-secondary);flex:1;">${cat}</label>
-<input type="number" id="thresh_${cat}" value="${thresholds[cat]}" min="1" style="width:70px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:13px;text-align:center;">
-<span style="font-size:12px;color:var(--text-muted);font-weight:500;">units</span>
-</div>`;
-});
-html += `</div><div style="margin-top:16px;"><button class="btn btn-primary" onclick="saveThresholds()">Save Thresholds</button></div>`;
-container.innerHTML = html;
+    const container = document.getElementById('thresholdContent');
+    const thresholds = ThresholdService.get();
+    
+    let html = `
+        <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(200px,1fr));gap:16px;padding-bottom:16px;">
+    `;
+    Object.entries(thresholds).forEach(([key, val]) => {
+        html += `
+            <div style="background:var(--bg);padding:12px;border-radius:var(--radius);display:flex;align-items:center;gap:8px;">
+                <span style="font-weight:500;flex:1;font-size:14px;">${key}</span>
+                <input type="number" class="threshold-input" data-category="${key}" value="${val}" min="0" style="width:60px;padding:6px;border:1px solid var(--border);border-radius:6px;text-align:center;">
+                <span style="font-size:12px;color:var(--text-muted);">units</span>
+            </div>
+        `;
+    });
+    html += `</div>
+        <div style="display:flex;gap:12px;margin-top:8px;border-top:1px solid var(--border);padding-top:20px;">
+            <input type="text" id="newThresholdCategory" placeholder="New category (e.g. Strip)" style="flex:1;padding:10px;border:1px solid var(--border);border-radius:var(--radius);font-size:14px;">
+            <input type="number" id="newThresholdValue" placeholder="Units" value="5" min="1" style="width:100px;padding:10px;border:1px solid var(--border);border-radius:var(--radius);font-size:14px;">
+            <button class="btn btn-primary" onclick="addThresholdCategory()">+ Add</button>
+        </div>
+        <div style="display:flex;justify-content:flex-end;margin-top:20px;">
+            <button class="btn btn-success" onclick="saveThresholds()">Save Thresholds</button>
+        </div>
+    `;
+    container.innerHTML = html;
+}
+
+// Add this helper function right below renderThresholds()
+function addThresholdCategory() {
+    const nameInput = document.getElementById('newThresholdCategory');
+    const valInput = document.getElementById('newThresholdValue');
+    const name = nameInput.value.trim();
+    if(!name) { showToast('Please enter a category name.', 'error'); return; }
+    
+    const thresholds = ThresholdService.get();
+    if(thresholds[name]) { showToast('Category already exists!', 'error'); return; }
+    
+    thresholds[name] = parseInt(valInput.value) || 5;
+    ThresholdService.save(thresholds);
+    showToast(`Threshold '${name}' added!`, 'success');
+    renderThresholds(); // Re-render
+}
+
+// Add this helper function to save changes
+function saveThresholds() {
+    const inputs = document.querySelectorAll('.threshold-input');
+    const thresholds = {};
+    inputs.forEach(inp => {
+        thresholds[inp.dataset.category] = parseInt(inp.value) || 5;
+    });
+    ThresholdService.save(thresholds);
+    showToast('Thresholds saved!', 'success');
+    updateNavBadges();
 }
 
 function saveThresholds() {
@@ -1547,28 +1588,41 @@ showToast('Low stock report sent to printer.', 'success');
 STOCK OUT
 ============================================================ */
 function renderStockOut() {
-const container = document.getElementById('stockoutContent');
-const items = DB.stockOut;
-if (items.length === 0) { container.innerHTML = '<div class="empty-state"><h4>No drugs currently out of stock</h4><p style="color:var(--text-muted);">When a drug reaches 0 quantity, it will automatically appear here.</p></div>'; return; }
-let html = `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;">`;
-items.forEach(m => {
-const timeStr = m.stockOutDate ? new Date(m.stockOutDate).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
-html += `<div onclick="showStockOutDetails('${m.id}')" style="cursor:pointer;background:var(--surface-alt);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px;transition:all 0.2s;border-left:4px solid var(--danger);">
-<div style="display:flex;justify-content:space-between;align-items:center;"><strong style="font-size:15px;color:var(--danger);">${m.name}</strong><span class="badge badge-danger">Out of Stock</span></div>
-<div style="font-size:12px;color:var(--text-muted);">${m.brand || ''} | Batch: ${m.batch} | Category: ${m.category} | Formulation: ${m.formulation || '—'}</div>
-<div style="margin-top:8px;font-size:12px;color:var(--text-muted);display:flex;justify-content:space-between;">
-<span>📅 Stocked Out: ${timeStr}</span>
-<span>💰 Last Price: ${DateHelper.formatKES(m.price)}</span>
-</div>
-<div style="margin-top:8px;display:flex;gap:8px;">
-<button class="btn btn-success btn-sm" onclick="event.stopPropagation();restockFromStockOut('${m.id}')">🔄 Restock</button>
-<button class="btn btn-delete btn-sm" onclick="event.stopPropagation();deleteStockOut('${m.id}')">Delete</button>
-</div>
-<div style="margin-top:8px;font-size:11px;color:var(--text-faint);text-align:center;">Click for full details</div>
-</div>`;
-});
-html += '</div>';
-container.innerHTML = html;
+    const container = document.getElementById('stockoutContent');
+    
+    // Find all medicines with EXACTLY 0 quantity
+    const stockOutItems = DB.inventory.filter(m => m.qty === 0);
+
+    // If there are none, show the empty message
+    if (stockOutItems.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <h4>No drugs currently out of stock</h4>
+                <p>When a drug reaches 0 quantity, it will automatically appear here.</p>
+            </div>
+        `;
+        return;
+    }
+
+    // If there are some, show them in a table
+    let html = `<table class="data-table"><thead><tr>
+        <th>Drug Name</th><th>Brand</th><th>Batch</th><th>Category</th><th>Last Price</th>
+    </tr></thead><tbody>`;
+    
+    stockOutItems.forEach(m => {
+        html += `
+            <tr>
+                <td class="drug-name">${m.name}</td>
+                <td>${m.brand || '—'}</td>
+                <td>${m.batch || '—'}</td>
+                <td>${m.category || '—'}</td>
+                <td>${DateHelper.formatKSh(m.price || 0)}</td>
+            </tr>
+        `;
+    });
+    html += `</tbody></table>`;
+    
+    container.innerHTML = html;
 }
 
 function showStockOutDetails(id) {
@@ -1919,7 +1973,60 @@ body.innerHTML = `
 document.getElementById('modalTitle').textContent = 'Edit Purchase';
 document.getElementById('modalOverlay').classList.remove('hidden');
 }
+function savePurchaseOrder() {
+    const poNumber = document.getElementById('poNumber').value.trim();
+    const date = document.getElementById('poDate').value;
+    const supplierId = document.getElementById('poSupplier').value;
+    
+    // Get Item Details from the new fields
+    const itemId = document.getElementById('poItemSelect').value;
+    const qty = parseInt(document.getElementById('poItemQty').value) || 0;
+    const costPrice = parseFloat(document.getElementById('poItemPrice').value) || 0;
 
+    if (!poNumber || !date || !supplierId) {
+        showToast('Please fill in PO details.', 'error');
+        return;
+    }
+    if (!itemId || qty < 1 || costPrice <= 0) {
+        showToast('Please select a drug, enter a valid quantity, and specify the buying price.', 'error');
+        return;
+    }
+
+    // Find the drug name
+    const med = DB.inventory.find(m => m.id === itemId);
+    const productName = med ? med.name : 'Unknown Drug';
+
+    // Build the items array (even if it's just 1 item in this version)
+    const items = [{
+        productId: itemId,
+        productName: productName,
+        qty: qty,
+        costPrice: costPrice,   // Store the buying price!
+        rate: costPrice,
+        price: costPrice
+    }];
+
+    const total = items.reduce((sum, item) => sum + (item.costPrice * item.qty), 0);
+
+    const newPO = {
+        id: genId('po_'),
+        poNumber: poNumber,
+        date: date,
+        supplierId: supplierId,
+        supplier: DB.suppliers.find(s => s.id === supplierId)?.name || supplierId,
+        items: items, // Saved correctly with the buying price
+        total: total,
+        status: 'Pending',
+        createdAt: new Date().toISOString()
+    };
+
+    StorageService.put('purchaseOrders', newPO);
+    logActivity('purchase', `Purchase Order ${poNumber} created for ${newPO.supplier} (${DateHelper.formatKSh(total)})`);
+    
+    closeModal();
+    renderPurchaseOrders();
+    showToast(`Purchase Order ${poNumber} created successfully!`, 'success');
+}
 function savePurchaseEdit() {
 const id = document.getElementById('purchaseId').value;
 const p = DB.purchases.find(x => x.id === id);
@@ -1976,51 +2083,110 @@ renderStock();
 updateNavBadges();
 }
 
-function showPurchaseModal() {
-const body = document.getElementById('modalBody');
-const meds = DB.inventory.map(m => `<option value="${m.id}">${m.name}</option>`).join('');
-const suppliers = DB.suppliers.map(s => `<option value="${s.name}">${s.name}</option>`).join('');
-body.innerHTML = `
-<div class="form-grid">
-<div class="form-group"><label>Date</label><input type="date" id="purchaseDate" value="${DateHelper.today()}"></div>
-<div class="form-group"><label>Supplier</label><select id="purchaseSupplier"><option value="">Select supplier</option>${suppliers}</select></div>
-<div class="form-group"><label>Medicine</label><select id="purchaseMed">${meds}</select></div>
-<div class="form-group"><label>Quantity</label><input type="number" id="purchaseQty" min="1" placeholder="10"></div>
-<div class="form-group"><label>Unit Cost (KES)</label><input type="number" id="purchaseCost" min="0" step="0.01" placeholder="150.00"></div>
-<div class="form-group"><label>Payment Method</label><select id="purchasePaymentMethod"><option value="CASH">Cash</option><option value="NCBA BANK">NCBA Bank</option><option value="POCHI">Pochi (M-Pesa)</option></select></div>
-</div>
-<div style="margin-top:16px;display:flex;gap:8px;justify-content:flex-end;"><button class="btn btn-secondary" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="savePurchase()">Save</button></div>
-`;
-document.getElementById('modalTitle').textContent = 'New Purchase';
-document.getElementById('modalOverlay').classList.remove('hidden');
-}
-function savePurchase() {
-const date = document.getElementById('purchaseDate').value;
-const supplier = document.getElementById('purchaseSupplier').value;
-const medId = document.getElementById('purchaseMed').value;
-const qty = parseInt(document.getElementById('purchaseQty').value);
-const unitCost = parseFloat(document.getElementById('purchaseCost').value);
-const paymentMethod = document.getElementById('purchasePaymentMethod').value;
-if (!medId || !qty || !unitCost || !paymentMethod) { showToast('Please fill all fields.', 'error'); return; }
-const med = DB.inventory.find(m => m.id === medId);
-if (!med) { showToast('Medicine not found.', 'error'); return; }
-const total = qty * unitCost;
-const purchase = { id: genId('pur_'), date, supplier, medicineId: medId, medicineName: med.name, qty, unitCost, total, paymentMethod, paid: false, createdAt: new Date().toISOString() };
-StorageService.put('purchases', purchase);
-const newTotalCost = (med.buyingPrice || 0) + total;
-const newQty = med.qty + qty;
-med.buyingPrice = newTotalCost;
-med.qty = newQty;
-med.costPrice = newQty > 0 ? newTotalCost / newQty : 0;
-StorageService.put('inventory', med);
-logActivity('purchase', `Purchase: ${qty} of ${med.name} from ${supplier} — ${DateHelper.formatKES(total)}`);
-showToast(`Purchase recorded. ${qty} of ${med.name} added to stock.`, 'success');
-closeModal();
-renderPurchases();
-renderStock();
-updateNavBadges();
+function showPurchaseModal(purchaseData = null) {
+    const suppliers = DB.suppliers;
+    const title = purchaseData ? 'Edit Purchase' : 'New Purchase';
+    const modalBody = `
+        <form id="purchaseForm" style="display:flex;flex-direction:column;gap:16px;">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                <div class="form-group">
+                    <label>Date</label>
+                    <input type="date" id="purchaseDate" value="${purchaseData?.date || DateHelper.today()}" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label>Supplier</label>
+                    <div style="display:flex;gap:8px;align-items:end;">
+                        <select id="purchaseSupplier" class="form-control" style="flex:1;" required>
+                            <option value="">Select supplier</option>
+                            ${suppliers.map(s => `<option value="${s.id}" ${purchaseData?.supplierId === s.id ? 'selected' : ''}>${s.name}</option>`).join('')}
+                        </select>
+                        <button type="button" class="btn btn-secondary btn-sm" onclick="openSupplierFromPurchase()" style="white-space:nowrap;padding:0 12px;height:42px;">+ Add</button>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Medicine</label>
+                    <select id="purchaseMedicine" class="form-control" required>
+                        <option value="">Select medicine</option>
+                        ${DB.inventory.map(m => `<option value="${m.id}" ${purchaseData?.medicineId === m.id ? 'selected' : ''}>${m.name} ${m.brand ? '('+m.brand+')' : ''}</option>`).join('')}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Quantity</label>
+                    <input type="number" id="purchaseQty" value="${purchaseData?.qty || 1}" min="1" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label>Payment Method</label>
+                    <select id="purchasePaymentMethod" class="form-control" required>
+                        <option value="">Select method</option>
+                        <option value="Cash" ${purchaseData?.paymentMethod === 'Cash' ? 'selected' : ''}>Cash</option>
+                        <option value="Bank" ${purchaseData?.paymentMethod === 'Bank' ? 'selected' : ''}>Bank</option>
+                        <option value="Mobile" ${purchaseData?.paymentMethod === 'Mobile' ? 'selected' : ''}>Mobile</option>
+                        <option value="Credit" ${purchaseData?.paymentMethod === 'Credit' ? 'selected' : ''}>Credit</option>
+                    </select>
+                </div>
+                <!-- ===== NEW BANK DROPDOWN ===== -->
+                <div class="form-group">
+                    <label>Deduct from Bank (Optional)</label>
+                    <select id="purchaseBankAccount" class="form-control">
+                        <option value="">Select Bank (If paying via bank)</option>
+                        ${DB.bankAccounts.map(b => `<option value="${b.id}" ${purchaseData?.bankAccountId === b.id ? 'selected' : ''}>${b.accountName} (${b.bankName})</option>`).join('')}
+                    </select>
+                </div>
+            </div>
+        </form>
+        <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px;border-top:1px solid var(--border);padding-top:16px;">
+            <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+            <button class="btn btn-primary" onclick="savePurchase()">Save</button>
+        </div>
+    `;
+    openModal(title, modalBody);
 }
 
+function savePurchase() {
+    const date = document.getElementById('purchaseDate').value;
+    const supplierId = document.getElementById('purchaseSupplier').value;
+    const medicineId = document.getElementById('purchaseMedicine').value;
+    const qty = parseInt(document.getElementById('purchaseQty').value) || 0;
+    const paymentMethod = document.getElementById('purchasePaymentMethod').value;
+    const bankAccountId = document.getElementById('purchaseBankAccount').value || null;
+
+    if (!date || !supplierId || !medicineId || qty < 1 || !paymentMethod) {
+        showToast('Please fill in all required fields.', 'error');
+        return;
+    }
+
+    const supplierName = DB.suppliers.find(s => s.id === supplierId)?.name || supplierId;
+    const medicineName = DB.inventory.find(m => m.id === medicineId)?.name || 'Unknown';
+    
+    // Fetch the selling price from inventory to calculate total
+    const med = DB.inventory.find(m => m.id === medicineId);
+    const total = qty * (med?.price || 0);
+
+    const newPurchase = {
+        id: genId('pur_'),
+        date: date,
+        supplierId: supplierId,
+        supplier: supplierName,
+        medicineId: medicineId,
+        medicineName: medicineName,
+        qty: qty,
+        paymentMethod: paymentMethod,
+        bankAccountId: bankAccountId, // Stored for cashbook logic
+        total: total,
+        status: 'Paid',
+        createdAt: new Date().toISOString()
+    };
+
+    StorageService.put('purchases', newPurchase);
+    logActivity('purchase', `Purchase made from ${supplierName} (${medicineName} x${qty})`);
+    
+    closeModal();
+    renderPurchases();
+    renderPayments();
+    renderCashBook();
+    renderBankAccounts(); // Refresh bank accounts to update balance
+    showToast('Purchase saved successfully!', 'success');
+}
 /* ============================================================
 PURCHASE ORDERS
 ============================================================ */
@@ -2046,26 +2212,56 @@ renderPurchaseOrders();
 updateNavBadges();
 }
 
-function showPOModal() {
-const body = document.getElementById('modalBody');
-const suppliers = DB.suppliers.map(s => `<option value="${s.name}">${s.name}</option>`).join('');
-const meds = DB.inventory.map(m => `<option value="${m.id}">${m.name}</option>`).join('');
-body.innerHTML = `
-<div class="form-grid">
-<div class="form-group"><label>PO Number</label><input type="text" id="poNumber" value="PO-${String(Date.now()).slice(-6)}"></div>
-<div class="form-group"><label>Date</label><input type="date" id="poDate" value="${DateHelper.today()}"></div>
-<div class="form-group"><label>Supplier</label><select id="poSupplier">${suppliers}</select></div>
-</div>
-<div style="margin-top:12px;"><h4 style="font-size:13px;">Order Items</h4></div>
-<div id="poItemsContainer">
-<div style="display:flex;gap:8px;margin-top:8px;"><select id="poItemMed" style="flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius);">${meds}</select><input type="number" id="poItemQty" placeholder="Qty" style="width:80px;padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius);"><button class="btn btn-secondary btn-sm" onclick="addPOItem()">Add</button></div>
-<div id="poItemsList" style="margin-top:8px;"></div>
-</div>
-<div style="margin-top:16px;display:flex;gap:8px;justify-content:flex-end;"><button class="btn btn-secondary" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="savePO()">Create PO</button></div>
-`;
-window._poItems = [];
-document.getElementById('modalTitle').textContent = 'New Purchase Order';
-document.getElementById('modalOverlay').classList.remove('hidden');
+function showPOModal(poData = null) {
+    const title = poData ? 'Edit Purchase Order' : 'New Purchase Order';
+    const modalBody = `
+        <form id="poForm" style="display:flex;flex-direction:column;gap:16px;">
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
+                <div class="form-group">
+                    <label>PO Number</label>
+                    <input type="text" id="poNumber" value="${poData?.poNumber || 'PO-' + Date.now().toString(36).toUpperCase()}" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label>Date</label>
+                    <input type="date" id="poDate" value="${poData?.date || DateHelper.today()}" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label>Supplier</label>
+                    <select id="poSupplier" class="form-control" required>
+                        <option value="">Select Supplier</option>
+                        ${DB.suppliers.map(s => `<option value="${s.id}" ${poData?.supplierId === s.id ? 'selected' : ''}>${s.name}</option>`).join('')}
+                        <option value="Other" ${poData?.supplierId === 'Other' ? 'selected' : ''}>Other Supplier</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div style="border-top:1px solid var(--border);padding-top:12px;">
+                <h4 style="font-size:14px;font-weight:600;margin-bottom:12px;">Order Details</h4>
+                <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:12px;">
+                    <div class="form-group">
+                        <label>Order Items</label>
+                        <select id="poItemSelect" class="form-control">
+                            <option value="">-- Select Drug --</option>
+                            ${DB.inventory.map(m => `<option value="${m.id}" ${poData?.itemId === m.id ? 'selected' : ''}>${m.name} (${m.brand || ''})</option>`).join('')}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Quantity</label>
+                        <input type="number" id="poItemQty" value="${poData?.qty || 1}" min="1" class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label>Buying Price / Unit (Ksh)</label>
+                        <input type="number" id="poItemPrice" step="0.01" min="0" class="form-control" placeholder="Cost from Supplier" required>
+                    </div>
+                </div>
+            </div>
+        </form>
+        <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:20px;border-top:1px solid var(--border);padding-top:16px;">
+            <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+            <button class="btn btn-primary" onclick="savePurchaseOrder()">${poData ? 'Update PO' : 'Create PO'}</button>
+        </div>
+    `;
+    openModal(title, modalBody);
 }
 function addPOItem() {
 const medSelect = document.getElementById('poItemMed');
@@ -2318,27 +2514,65 @@ updateNavBadges();
 EXPENSES
 ============================================================ */
 function renderExpenses() {
-const container = document.getElementById('expensesContent');
-const timeFilter = document.getElementById('expensesTimeFilter')?.value || 'all';
-const dateFrom = document.getElementById('expensesDateFrom')?.value;
-const dateTo = document.getElementById('expensesDateTo')?.value;
-let range = DateHelper.getRange(timeFilter, dateFrom, dateTo);
-let items = DB.expenses.filter(e => e.date >= range.from && e.date <= range.to);
-if (items.length === 0) { container.innerHTML = '<div class="empty-state"><h4>No expenses recorded</h4><button class="btn btn-primary" onclick="showExpenseModal()">+ Add Expense</button></div>'; return; }
-let total = 0;
-let html = `<div style="margin-bottom:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-<button class="btn btn-primary" onclick="showExpenseModal()">+ Add Expense</button>
-<input type="text" id="expenseSearch" placeholder="🔍 Search expenses..." oninput="renderExpenses()" style="padding:8px 12px;border:1px solid var(--border-strong);border-radius:var(--radius);font-size:13px;width:200px;">
-</div><table class="data-table"><thead><tr><th>Date</th><th>Time</th><th>Category</th><th>Description</th><th>Amount</th><th>Payment</th><th>TX Code</th><th style="text-align:right;">Actions</th></tr></thead><tbody>`;
-const searchTerm = document.getElementById('expenseSearch')?.value?.toLowerCase() || '';
-if (searchTerm) items = items.filter(e => e.description.toLowerCase().includes(searchTerm) || e.category.toLowerCase().includes(searchTerm));
-items.forEach(e => {
-total += e.amount;
-const timeStr = e.createdAt ? new Date(e.createdAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '—';
-html += `<tr><td>${DateHelper.formatDateShort(e.date)}</td><td>${timeStr}</td><td><span class="badge badge-neutral">${e.category}</span></td><td>${e.description}</td><td style="font-weight:600;color:var(--danger);">${DateHelper.formatKES(e.amount)}</td><td>${e.payment}</td><td>${e.txCode || '—'}</td><td style="text-align:right;"><button class="btn btn-edit btn-sm" onclick="editExpense('${e.id}')">Edit</button><button class="btn btn-delete btn-sm" onclick="deleteExpense('${e.id}')">Delete</button></td></tr>`;
-});
-html += `</tbody></table><div class="table-footer"><span>Total Expenses</span><span class="total-amount expense">${DateHelper.formatKES(total)}</span></div>`;
-container.innerHTML = html;
+    const container = document.getElementById('expensesContent');
+    const period = document.getElementById('expensesTimeFilter')?.value || 'today';
+    const from = document.getElementById('expensesDateFrom')?.value || '2000-01-01';
+    const to = document.getElementById('expensesDateTo')?.value || '2099-12-31';
+    const range = DateHelper.getRange(period, from, to);
+    
+    let expenses = DB.expenses.filter(e => e.date >= range.from && e.date <= range.to);
+    expenses.sort((a,b) => (b.createdAt || b.date).localeCompare(a.createdAt || a.date));
+
+    if (expenses.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:48px;height:48px;color:var(--text-faint);margin-bottom:12px;"><path d="M12 2v20"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                <h4 style="font-size:15px;font-weight:600;color:var(--text-secondary);margin-bottom:4px;">No expenses recorded</h4>
+                <p style="color:var(--text-muted);font-size:13px;margin-bottom:16px;">Click the button below to add your first expense.</p>
+                <button class="btn btn-primary" onclick="showExpenseModal()">+ Add Expense</button>
+            </div>
+        `;
+        return;
+    }
+
+    let total = expenses.reduce((s, e) => s + (e.amount || 0), 0);
+    let html = `
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:0 0 16px 0;border-bottom:1px solid var(--border);margin-bottom:16px;">
+            <span style="font-weight:600;font-size:15px;color:var(--text);">Total Expenses</span>
+            <span style="font-weight:700;font-size:18px;color:var(--danger);">${DateHelper.formatKSh(total)}</span>
+        </div>
+        <table class="data-table"><thead><tr>
+            <th>Date</th><th>Category</th><th>Description</th><th>TX Code</th>
+            <th style="text-align:right;">Amount</th><th style="text-align:right;">Actions</th>
+        </tr></thead><tbody>
+    `;
+    expenses.forEach(e => {
+        html += `
+            <tr>
+                <td>${DateHelper.formatDateDisplay(e.date)}</td>
+                <td><span class="badge badge-info">${e.category}</span></td>
+                <td style="max-width:200px;">${e.description}</td>
+                <td style="font-size:12px;color:var(--text-muted);">${e.txCode || 'N/A'}</td>
+                <td style="text-align:right;font-weight:600;color:var(--danger);">${DateHelper.formatKSh(e.amount)}</td>
+                <td style="text-align:right;">
+                    <button class="btn btn-delete btn-sm" onclick="deleteExpense('${e.id}')">Delete</button>
+                </td>
+            </tr>
+        `;
+    });
+    html += `</tbody></table>`;
+    container.innerHTML = html;
+}
+
+// Add this delete function if it doesn't exist
+function deleteExpense(id) {
+    if (!confirm('Delete this expense entry?')) return;
+    const expenses = StorageService.getAll('expenses').filter(e => e.id !== id);
+    localStorage.setItem('pharmtrack_expenses', JSON.stringify(expenses));
+    showToast('Expense deleted.', 'info');
+    renderExpenses();
+    renderPayments();
+    renderCashBook();
 }
 
 function editExpense(id) {
@@ -2389,63 +2623,313 @@ showToast('Expense deleted.', 'info');
 renderExpenses();
 updateNavBadges();
 }
-function showExpenseModal(data) {
-const body = document.getElementById('modalBody');
-const d = data || {};
-body.innerHTML = `
-<input type="hidden" id="expenseId" value="${d.id || ''}">
-<div class="form-grid">
-<div class="form-group"><label>Date</label><input type="date" id="expDate" value="${d.date || DateHelper.today()}"></div>
-<div class="form-group"><label>Category</label><select id="expCategory"><option value="Rent" ${d.category === 'Rent' ? 'selected' : ''}>Rent</option><option value="Electricity" ${d.category === 'Electricity' ? 'selected' : ''}>Electricity</option><option value="Salaries" ${d.category === 'Salaries' ? 'selected' : ''}>Salaries</option><option value="Internet" ${d.category === 'Internet' ? 'selected' : ''}>Internet</option><option value="Supplies" ${d.category === 'Supplies' ? 'selected' : ''}>Supplies</option><option value="Transport" ${d.category === 'Transport' ? 'selected' : ''}>Transport</option><option value="Miscellaneous" ${d.category === 'Miscellaneous' ? 'selected' : ''}>Miscellaneous</option></select></div>
-<div class="form-group"><label>Description</label><input type="text" id="expDesc" value="${d.description || ''}" placeholder="What was this for?"></div>
-<div class="form-group"><label>Amount (KES)</label><input type="number" id="expAmount" value="${d.amount || ''}" min="0" step="0.01" placeholder="1000.00"></div>
-<div class="form-group"><label>Payment Method</label><select id="expPayment"><option value="CASH" ${d.payment === 'CASH' ? 'selected' : ''}>Cash</option><option value="NCBA BANK" ${d.payment === 'NCBA BANK' ? 'selected' : ''}>NCBA Bank</option><option value="POCHI" ${d.payment === 'POCHI' ? 'selected' : ''}>Pochi (M-Pesa)</option></select></div>
-<div class="form-group"><label>TX Code</label><input type="text" id="expTxCode" value="${d.txCode || ''}" placeholder="Transaction code"></div>
-</div>
-<div style="margin-top:16px;display:flex;gap:8px;justify-content:flex-end;"><button class="btn btn-secondary" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveExpense()">Save</button></div>
-`;
-document.getElementById('modalTitle').textContent = data ? 'Edit Expense' : 'Add Expense';
-document.getElementById('modalOverlay').classList.remove('hidden');
+// ============================================================
+// CUSTOM EXPENSE MODAL FUNCTIONS (Self-contained)
+// ============================================================
+function openModal(title, body) {
+    // Try to set the title and body, or create fallback handling
+    const titleEl = document.getElementById('modalTitle');
+    const bodyEl = document.getElementById('modalBody');
+    const overlay = document.getElementById('modalOverlay');
+    
+    if (titleEl && bodyEl && overlay) {
+        titleEl.textContent = title;
+        bodyEl.innerHTML = body;
+        overlay.classList.remove('hidden');
+    } else {
+        alert('Modal elements not found! Check your HTML for "modalTitle", "modalBody", and "modalOverlay".');
+    }
 }
+
+function closeModal() {
+    const overlay = document.getElementById('modalOverlay');
+    if (overlay) overlay.classList.add('hidden');
+}
+function processGRN(poId) {
+    if (!poId) { showToast('Invalid PO ID.', 'error'); return; }
+    const po = DB.purchaseOrders.find(p => p.id === poId);
+    if (!po) { showToast('Purchase Order not found.', 'error'); return; }
+    if (po.status === 'Received') { showToast('This PO has already been received.', 'info'); return; }
+
+    // 1. Find items array (handles both 'items' and 'lines' names)
+    const items = po.items || po.lines || [];
+    if (!items || items.length === 0) { showToast('No items found in this Purchase Order.', 'error'); return; }
+
+    let totalCost = 0;
+    let itemDetails = [];
+    
+    items.forEach(item => {
+        const productName = item.productName || item.name || 'Unknown Drug';
+        const qtyReceived = item.qty || item.quantity || 0;
+        let costPrice = item.costPrice || item.rate || item.price || 0;
+        
+        // Fallback: If costPrice is 0, try to fetch it from existing inventory
+        if (costPrice === 0) {
+            const existingMed = DB.inventory.find(m => m.id === item.productId || m.name === productName);
+            if (existingMed) costPrice = existingMed.costPrice || existingMed.price || 0;
+        }
+        
+        // 2. Find and update the medicine in inventory
+        const med = DB.inventory.find(m => m.id === item.productId || m.name === productName);
+        if (med) {
+            if (costPrice > 0) med.costPrice = costPrice;
+            med.qty = (med.qty || 0) + qtyReceived;
+            if (item.batch) med.batch = item.batch;
+            if (item.expiry) med.expiry = item.expiry;
+            StorageService.put('inventory', med);
+            itemDetails.push(`${productName} (x${qtyReceived})`);
+        } else {
+            itemDetails.push(`${productName} (x${qtyReceived}) - Item not found in DB`);
+        }
+        totalCost += (costPrice * qtyReceived);
+    });
+
+    // 3. Automatically create an Expense entry (Money OUT)
+    const expenseEntry = {
+        id: genId('exp_'),
+        date: DateHelper.today(),
+        category: 'Purchases',
+        description: `Goods Received (PO: ${po.poNumber || po.id}) from ${po.supplier || 'Supplier'}`,
+        amount: totalCost > 0 ? totalCost : (po.total || 0),
+        txCode: po.poNumber || 'GRN',
+        createdAt: new Date().toISOString()
+    };
+    StorageService.put('expenses', expenseEntry);
+
+    // 4. Create a Goods Received Note (GRN) record
+    const grnRecord = {
+        id: genId('grn_'),
+        date: DateHelper.today(),
+        poId: po.id,
+        poNumber: po.poNumber || po.id,
+        supplier: po.supplier || 'Supplier',
+        items: itemDetails,
+        total: totalCost || po.total,
+        createdAt: new Date().toISOString()
+    };
+    StorageService.put('grn', grnRecord);
+
+    // 5. Update PO status
+    po.status = 'Received';
+    StorageService.put('purchaseOrders', po);
+
+    logActivity('purchase', `Goods received for PO ${po.poNumber || po.id}. Expense: ${DateHelper.formatKSh(totalCost)}`);
+    showToast(`Goods Received! Stock updated. Expense of ${DateHelper.formatKSh(totalCost)} added.`, 'success');
+
+    // 6. Refresh ALL relevant panels
+    renderPurchaseOrders();
+    renderGRN();
+    renderExpenses();
+    renderPayments();
+    renderCashBook();
+    renderStock();
+    renderTable();
+}
+
+function showExpenseModal(expenseData = null) {
+    let categories = JSON.parse(localStorage.getItem('pharmtrack_expense_categories') || '[]');
+    if (categories.length === 0) {
+        categories = ['Rent', 'Electricity', 'Salaries', 'Internet', 'Supplies', 'Transport', 'Miscellaneous'];
+    }
+
+    const title = expenseData ? 'Edit Expense' : 'Add Expense';
+    const modalBody = `
+        <form id="expenseForm" style="display:flex;flex-direction:column;gap:16px;">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                <div class="form-group">
+                    <label>Date</label>
+                    <input type="date" id="expDate" value="${expenseData?.date || DateHelper.today()}" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label>Amount (KES)</label>
+                    <input type="number" id="expAmount" value="${expenseData?.amount || ''}" step="0.01" min="0" class="form-control" required>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Category</label>
+                <div style="display:flex;gap:8px;">
+                    <select id="expCategory" class="form-control" style="flex:1;padding:10px;border:1px solid var(--border);border-radius:var(--radius);font-size:14px;">
+                        ${categories.map(c => `<option value="${c}" ${expenseData?.category === c ? 'selected' : ''}>${c}</option>`).join('')}
+                    </select>
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="promptAddExpenseCategory()" style="white-space:nowrap;">+ Add</button>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Description</label>
+                <input type="text" id="expDescription" value="${expenseData?.description || ''}" class="form-control" placeholder="What was this for?" required>
+            </div>
+            <div class="form-group">
+                <label>TX Code (Optional)</label>
+                <input type="text" id="expTxCode" value="${expenseData?.txCode || ''}" class="form-control" placeholder="Transaction code">
+            </div>
+            <!-- ===== NEW BANK DROPDOWN ===== -->
+            <div class="form-group">
+                <label>Deduct from Bank (Optional)</label>
+                <select id="expenseBankAccount" class="form-control">
+                    <option value="">Select Bank (If paying via bank)</option>
+                    ${DB.bankAccounts.map(b => `<option value="${b.id}" ${expenseData?.bankAccountId === b.id ? 'selected' : ''}>${b.accountName} (${b.bankName})</option>`).join('')}
+                </select>
+            </div>
+        </form>
+        <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:20px;border-top:1px solid var(--border);padding-top:16px;">
+            <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+            <button class="btn btn-primary" onclick="saveExpense()">Save</button>
+        </div>
+    `;
+    openModal(title, modalBody);
+}
+
 function saveExpense() {
-const id = document.getElementById('expenseId').value;
-const date = document.getElementById('expDate').value;
-const category = document.getElementById('expCategory').value;
-const description = document.getElementById('expDesc').value.trim();
-const amount = parseFloat(document.getElementById('expAmount').value);
-const payment = document.getElementById('expPayment').value;
-const txCode = document.getElementById('expTxCode').value.trim();
-if (!date || !description || !amount) { showToast('Please fill all required fields.', 'error'); return; }
-if (payment !== 'CASH' && !txCode) { showToast('Please enter a transaction code for non-cash payments.', 'error'); return; }
-const data = { id: id || genId('exp_'), date, category, description, amount, payment, txCode: payment === 'CASH' ? '' : txCode, createdAt: id ? undefined : new Date().toISOString() };
-StorageService.put('expenses', data);
-logActivity('expense', `Expense ${id ? 'updated' : 'added'}: ${description} — ${DateHelper.formatKES(amount)}`);
-showToast(`Expense ${id ? 'updated' : 'added'} successfully.`, 'success');
-closeModal();
-renderExpenses();
-updateNavBadges();
+    const date = document.getElementById('expDate').value;
+    const amount = parseFloat(document.getElementById('expAmount').value);
+    const category = document.getElementById('expCategory').value;
+    const description = document.getElementById('expDescription').value.trim();
+    const txCode = document.getElementById('expTxCode').value.trim();
+    const bankAccountId = document.getElementById('expenseBankAccount').value || null;
+
+    if (!date || !amount || amount <= 0 || !category || !description) {
+        showToast('Please fill in all required fields.', 'error');
+        return;
+    }
+
+    const newExpense = {
+        id: genId('exp_'),
+        date: date,
+        category: category,
+        amount: amount,
+        description: description,
+        txCode: txCode || 'N/A',
+        bankAccountId: bankAccountId, // Stored for cashbook logic
+        createdAt: new Date().toISOString()
+    };
+    
+    StorageService.put('expenses', newExpense);
+    logActivity('expense', `Expense added: ${category} - ${description} (${DateHelper.formatKSh(amount)})`);
+    
+    closeModal();
+    renderExpenses();
+    renderPayments();
+    renderCashBook();
+    renderBankAccounts(); // Refresh bank accounts to update balance
+    showToast('Expense saved successfully!', 'success');
+}
+    // Save to your database
+
+
+function promptAddExpenseCategory() {
+    const newCat = prompt('Enter new expense category name:');
+    if (!newCat || !newCat.trim()) return;
+    let categories = JSON.parse(localStorage.getItem('pharmtrack_expense_categories') || '[]');
+    if (!categories.includes(newCat.trim())) {
+        categories.push(newCat.trim());
+        localStorage.setItem('pharmtrack_expense_categories', JSON.stringify(categories));
+        showToast(`Category '${newCat}' added!`, 'success');
+        closeModal();
+        showExpenseModal();
+    } else {
+        showToast('Category already exists.', 'info');
+    }
+}
+function promptAddExpenseCategory() {
+    const newCat = prompt('Enter new expense category name:');
+    if (!newCat || !newCat.trim()) return;
+    let categories = JSON.parse(localStorage.getItem('pharmtrack_expense_categories') || '[]');
+    if (!categories.includes(newCat.trim())) {
+        categories.push(newCat.trim());
+        localStorage.setItem('pharmtrack_expense_categories', JSON.stringify(categories));
+        showToast(`Category '${newCat}' added!`, 'success');
+        closeModal();
+        showExpenseModal();
+    } else {
+        showToast('Category already exists.', 'info');
+    }
 }
 
 /* ============================================================
 PAYMENTS
 ============================================================ */
 function renderPayments() {
-const container = document.getElementById('paymentsContent');
-const items = DB.payments;
-if (items.length === 0) { container.innerHTML = '<div class="empty-state"><h4>No payments recorded</h4><button class="btn btn-primary" onclick="showPaymentModal()">+ New Payment</button></div>'; return; }
-let html = `<div style="margin-bottom:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-<button class="btn btn-primary" onclick="showPaymentModal()">+ New Payment</button>
-<input type="text" id="paymentSearch" placeholder="🔍 Search payments..." oninput="renderPayments()" style="padding:8px 12px;border:1px solid var(--border-strong);border-radius:var(--radius);font-size:13px;width:200px;">
-</div><table class="data-table"><thead><tr><th>Date</th><th>Time</th><th>Supplier</th><th>Amount</th><th>Method</th><th>Reference</th><th style="text-align:right;">Actions</th></tr></thead><tbody>`;
-const searchTerm = document.getElementById('paymentSearch')?.value?.toLowerCase() || '';
-let filtered = items;
-if (searchTerm) filtered = filtered.filter(p => p.supplier.toLowerCase().includes(searchTerm));
-filtered.forEach(p => {
-const timeStr = p.createdAt ? new Date(p.createdAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '—';
-html += `<tr><td>${DateHelper.formatDateShort(p.date)}</td><td>${timeStr}</td><td>${p.supplier}</td><td style="font-weight:600;color:var(--danger);">${DateHelper.formatKES(p.amount)}</td><td>${p.method}</td><td>${p.reference || '—'}</td><td style="text-align:right;"><button class="btn btn-edit btn-sm" onclick="editPayment('${p.id}')">Edit</button><button class="btn btn-delete btn-sm" onclick="deletePayment('${p.id}')">Delete</button></td></tr>`;
-});
-html += '</tbody></table>';
-container.innerHTML = html;
+    const container = document.getElementById('paymentsContent');
+    
+    // 1. Gather Money In (Sales)
+    const moneyIn = DB.sales.map(s => ({
+        date: s.date,
+        description: `Sale: SR-${String(s.receiptNumber).padStart(4,'0')}`,
+        customer: s.customer,
+        type: 'IN',
+        amount: s.total || 0,
+        reference: s.reference || 'N/A',
+        paymentMethod: s.paymentMethod || 'N/A',
+        timestamp: s.createdAt || s.date
+    }));
+
+    // 2. Gather Money Out (Expenses + Purchases)
+    const moneyOut = [
+        ...DB.expenses.map(e => ({
+            date: e.date,
+            description: `Expense: ${e.category} - ${e.description}`,
+            customer: '-',
+            type: 'OUT',
+            amount: e.amount || 0,
+            reference: e.txCode || 'N/A',
+            paymentMethod: e.category,
+            timestamp: e.createdAt || e.date
+        })),
+        ...DB.purchases.map(p => ({
+            date: p.date,
+            description: `Purchase: ${p.supplier || 'Supplier'}`,
+            customer: p.supplier || '-',
+            type: 'OUT',
+            amount: p.total || 0,
+            reference: p.reference || p.id || 'N/A',
+            paymentMethod: p.paymentMethod || 'Purchase',
+            timestamp: p.createdAt || p.date
+        }))
+    ];
+
+    // 3. Merge and Sort by newest first
+    const allTransactions = [...moneyIn, ...moneyOut].sort((a,b) => 
+        (b.timestamp || b.date).localeCompare(a.timestamp || a.date)
+    );
+
+    if (allTransactions.length === 0) {
+        container.innerHTML = `<div class="empty-state"><h4>No payments recorded</h4><p>Transactions will automatically appear here from sales, expenses, and purchases.</p></div>`;
+        return;
+    }
+
+    let html = `
+        <div style="margin-bottom:16px;display:flex;gap:16px;flex-wrap:wrap;">
+            <div style="background:var(--success-bg);padding:12px 20px;border-radius:var(--radius);border-left:4px solid var(--success);">
+                <div style="font-size:12px;color:var(--text-muted);">Total Money In</div>
+                <div style="font-size:20px;font-weight:700;color:var(--success);">${DateHelper.formatKSh(moneyIn.reduce((s,it)=>s+it.amount,0))}</div>
+            </div>
+            <div style="background:var(--danger-bg);padding:12px 20px;border-radius:var(--radius);border-left:4px solid var(--danger);">
+                <div style="font-size:12px;color:var(--text-muted);">Total Money Out</div>
+                <div style="font-size:20px;font-weight:700;color:var(--danger);">${DateHelper.formatKSh(moneyOut.reduce((s,it)=>s+it.amount,0))}</div>
+            </div>
+        </div>
+        <table class="data-table"><thead><tr>
+            <th>Date</th><th>Description</th><th>Customer/Ref</th><th>Payment Method</th>
+            <th style="text-align:right;">Amount</th><th style="text-align:center;">Type</th>
+        </tr></thead><tbody>
+    `;
+    allTransactions.forEach(t => {
+        const typeClass = t.type === 'IN' ? 'badge-success' : 'badge-danger';
+        const sign = t.type === 'IN' ? '+' : '-';
+        const color = t.type === 'IN' ? 'var(--success)' : 'var(--danger)';
+        html += `
+            <tr>
+                <td>${DateHelper.formatDateDisplay(t.date)}</td>
+                <td style="font-weight:500;">${t.description}</td>
+                <td style="font-size:13px;color:var(--text-muted);">${t.customer} ${t.reference ? '| Ref: '+t.reference : ''}</td>
+                <td style="font-size:12px;">${t.paymentMethod}</td>
+                <td style="text-align:right;font-weight:600;color:${color};">${sign} ${DateHelper.formatKSh(t.amount)}</td>
+                <td style="text-align:center;"><span class="badge ${typeClass}">${t.type}</span></td>
+            </tr>
+        `;
+    });
+    html += `</tbody></table>`;
+    container.innerHTML = html;
 }
 
 function editPayment(id) {
@@ -2534,149 +3018,166 @@ updateNavBadges();
 /* ============================================================
 CASH BOOK - Enhanced with drill-down capabilities
 ============================================================ */
-function renderCashBook() {
-const container = document.getElementById('cashbookContent');
-const timeFilter = document.getElementById('cashbookTimeFilter')?.value || 'all';
-const dateFrom = document.getElementById('cashbookDateFrom')?.value;
-const dateTo = document.getElementById('cashbookDateTo')?.value;
-let range = DateHelper.getRange(timeFilter, dateFrom, dateTo);
-const cashSales = DB.sales.filter(s => (s.payment === 'CASH' || s.paymentMethod === 'CASH') && s.date >= range.from && s.date <= range.to);
-const cashExpenses = DB.expenses.filter(e => e.payment === 'CASH' && e.date >= range.from && e.date <= range.to);
-const cashPayments = DB.payments.filter(p => p.method === 'CASH' && p.date >= range.from && p.date <= range.to);
-const items = [
-...cashSales.map(s => ({ date: s.date, type: 'Sale', description: `SR-${String(s.receiptNumber || '0').padStart(4, '0')} — ${s.customer || 'Walk-in'}`, amount: s.total, inflow: true, id: s.id, panel: 'sales' })),
-...cashExpenses.map(e => ({ date: e.date, type: 'Expense', description: e.description, amount: e.amount, inflow: false, id: e.id, panel: 'expenses' })),
-...cashPayments.map(p => ({ date: p.date, type: 'Payment', description: `Payment to ${p.supplier}`, amount: p.amount, inflow: false, id: p.id, panel: 'payments' }))
-];
-items.sort((a,b) => b.date.localeCompare(a.date));
-if (items.length === 0) { container.innerHTML = '<div class="empty-state"><h4>No cash transactions in the selected time range</h4></div>'; return; }
-let totalIn = 0, totalOut = 0, balance = 0;
-let html = `<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:16px;">
-<div style="background:var(--surface-alt);padding:16px;border-radius:var(--radius);text-align:center;"><div style="font-size:12px;color:var(--text-muted);">Cash Inflow</div><div style="font-size:24px;font-weight:700;color:var(--success);">${DateHelper.formatKSh(0)}</div></div>
-<div style="background:var(--surface-alt);padding:16px;border-radius:var(--radius);text-align:center;"><div style="font-size:12px;color:var(--text-muted);">Cash Outflow</div><div style="font-size:24px;font-weight:700;color:var(--danger);">${DateHelper.formatKSh(0)}</div></div>
-<div style="background:var(--surface-alt);padding:16px;border-radius:var(--radius);text-align:center;"><div style="font-size:12px;color:var(--text-muted);">Net Cash Balance</div><div style="font-size:24px;font-weight:700;color:var(--brand);">${DateHelper.formatKSh(0)}</div></div>
-</div>
-<table class="data-table"><thead><tr><th>Date</th><th>Type</th><th>Description</th><th>Inflow</th><th>Outflow</th><th>Balance</th></tr></thead><tbody>`;
-items.forEach(item => {
-if (item.inflow) totalIn += item.amount; else totalOut += item.amount;
-balance = totalIn - totalOut;
-html += `<tr onclick="drillDownCashBook('${item.panel}', '${item.id}')" style="cursor:pointer;">
-<td>${DateHelper.formatDateShort(item.date)}</td>
-<td><span class="badge ${item.inflow ? 'badge-success' : 'badge-danger'}">${item.type}</span></td>
-<td>${item.description}</td>
-<td style="${item.inflow ? 'color:var(--success);font-weight:600;' : ''}">${item.inflow ? DateHelper.formatKSh(item.amount) : ''}</td>
-<td style="${!item.inflow ? 'color:var(--danger);font-weight:600;' : ''}">${!item.inflow ? DateHelper.formatKSh(item.amount) : ''}</td>
-<td style="font-weight:600;${balance >= 0 ? 'color:var(--success)' : 'color:var(--danger)'}">${DateHelper.formatKSh(balance)}</td>
-</tr>`;
-});
-html += `</tbody></table>
-<div class="table-footer" style="display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;">
-<span>Total Inflow: <span style="color:var(--success);font-weight:700;">${DateHelper.formatKSh(totalIn)}</span></span>
-<span>Total Outflow: <span style="color:var(--danger);font-weight:700;">${DateHelper.formatKSh(totalOut)}</span></span>
-<span>Net Balance: <span style="font-weight:700;${totalIn - totalOut >= 0 ? 'color:var(--success)' : 'color:var(--danger)'}">${DateHelper.formatKSh(totalIn - totalOut)}</span></span>
-</div>
-<div style="margin-top:12px;font-size:12px;color:var(--text-muted);text-align:center;">Click any row to view the original transaction details</div>`;
-container.innerHTML = html;
-}
+    // ============================================================
+// BANK ACCOUNT FUNCTIONS (Complete System)
+// ============================================================
 
-function drillDownCashBook(panel, id) {
-if (panel === 'sales') {
-const sale = DB.sales.find(s => s.id === id);
-if (sale) {
-viewSaleReceipt(sale.id);
-}
-} else if (panel === 'expenses') {
-navigate('expenses');
-// Highlight the expense row (implemented via search)
-const searchInput = document.getElementById('expenseSearch');
-if (searchInput) {
-// Find the expense and filter by description or ID
-const expense = DB.expenses.find(e => e.id === id);
-if (expense) {
-searchInput.value = expense.description;
-renderExpenses();
-}
-}
-} else if (panel === 'payments') {
-navigate('payments');
-// Highlight the payment row (implemented via search)
-const searchInput = document.getElementById('paymentSearch');
-if (searchInput) {
-const payment = DB.payments.find(p => p.id === id);
-if (payment) {
-searchInput.value = payment.supplier;
-renderPayments();
-}
-}
-}
-showToast(`Viewing details for the selected transaction.`, 'info');
-}
-
-/* ============================================================
-BANK ACCOUNTS - Fully Active
-============================================================ */
 function renderBankAccounts() {
-const container = document.getElementById('bankaccountsContent');
-const items = DB.bankAccounts;
-if (items.length === 0) { container.innerHTML = '<div class="empty-state"><h4>No bank accounts</h4><button class="btn btn-primary" onclick="showBankAccountModal()">+ Add Account</button></div>'; return; }
-let html = `<div style="margin-bottom:12px;"><button class="btn btn-primary" onclick="showBankAccountModal()">+ Add Account</button></div><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;">`;
-items.forEach(acc => {
-html += `<div style="background:var(--surface-alt);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px;">
-<div style="display:flex;justify-content:space-between;align-items:center;"><strong>${acc.name}</strong><div><button class="btn btn-edit btn-sm" onclick="editBankAccount('${acc.id}')">Edit</button><button class="btn btn-delete btn-sm" onclick="deleteBankAccount('${acc.id}')">Delete</button></div></div>
-<div style="font-size:12px;color:var(--text-muted);">${acc.accountNo || ''}</div>
-<div style="font-size:12px;color:var(--text-muted);">${acc.bank || ''}</div>
-<div style="margin-top:8px;font-size:13px;">Balance: <strong>${DateHelper.formatKES(acc.balance || 0)}</strong></div>
-</div>`;
-});
-html += '</div>';
-container.innerHTML = html;
+    const container = document.getElementById('bankaccountsContent');
+    const accounts = DB.bankAccounts;
+
+    if (!accounts || accounts.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <h4>No bank accounts added</h4>
+                <p>Click "+ Add Account" to get started.</p>
+            </div>
+        `;
+        return;
+    }
+
+    let html = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">`;
+    
+    accounts.forEach(acc => {
+        const initialBalance = acc.balance || 0;
+        const accountName = acc.accountName || 'Unnamed Account';
+        const bankName = acc.bankName || 'Unknown Bank';
+        const accountNumber = acc.accountNumber || '';
+
+        // 1. Calculate MONEY IN
+        let totalIn = DB.sales
+            .filter(s => {
+                const pm = (s.paymentMethod || '').toLowerCase();
+                const an = accountName.toLowerCase();
+                const bn = bankName.toLowerCase();
+                return pm.includes(an) || pm.includes(bn);
+            })
+            .reduce((sum, s) => sum + (s.total || 0), 0);
+
+        // 2. Calculate MONEY OUT
+        let totalOut = 0;
+        totalOut += DB.expenses
+            .filter(e => e.bankAccountId === acc.id)
+            .reduce((sum, e) => sum + (e.amount || 0), 0);
+        totalOut += DB.purchases
+            .filter(p => p.bankAccountId === acc.id)
+            .reduce((sum, p) => sum + (p.total || 0), 0);
+
+        const currentBalance = initialBalance + totalIn - totalOut;
+        
+        html += `
+            <div class="card" style="margin:0; overflow:hidden;">
+                <div class="card-header" style="border-bottom:none; background: var(--surface-alt); padding: 16px 20px;">
+                    <div>
+                        <div class="card-title">${accountName}</div>
+                        <div style="font-size:13px;color:var(--text-muted);">${bankName} • ${accountNumber}</div>
+                    </div>
+                    <div style="display:flex;gap:8px;">
+                        <button class="btn btn-edit btn-sm" onclick="editBankAccount('${acc.id}')">Edit</button>
+                        <button class="btn btn-delete btn-sm" onclick="deleteBankAccount('${acc.id}')">Delete</button>
+                    </div>
+                </div>
+                <div class="card-body" style="padding:12px 20px 20px;">
+                    <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);">
+                        <span style="font-size:14px;font-weight:500;">Initial Balance:</span>
+                        <span style="font-weight:500;">${DateHelper.formatKSh(initialBalance)}</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);">
+                        <span style="font-size:14px;font-weight:500;color:var(--success);">⬆ Money IN (Sales):</span>
+                        <span style="font-weight:500;color:var(--success);">+${DateHelper.formatKSh(totalIn)}</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);">
+                        <span style="font-size:14px;font-weight:500;color:var(--danger);">⬇ Money OUT (Expenses/Purchases):</span>
+                        <span style="font-weight:500;color:var(--danger);">-${DateHelper.formatKSh(totalOut)}</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;padding-top:12px;margin-top:8px;border-top:2px solid var(--brand);">
+                        <span style="font-size:16px;font-weight:700;">Current Running Balance:</span>
+                        <span style="font-size:18px;font-weight:800;color:${currentBalance >= 0 ? 'var(--success)' : 'var(--danger)'};">${DateHelper.formatKSh(currentBalance)}</span>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+    html += `</div>`;
+    container.innerHTML = html;
 }
 
-function showBankAccountModal(data) {
-const body = document.getElementById('modalBody');
-const d = data || {};
-body.innerHTML = `
-<input type="hidden" id="bankId" value="${d.id || ''}">
-<div class="form-grid">
-<div class="form-group"><label>Account Name *</label><input type="text" id="bankAccName" value="${d.name || ''}" placeholder="e.g. NCBA Business Account"></div>
-<div class="form-group"><label>Bank Name</label><input type="text" id="bankAccBank" value="${d.bank || ''}" placeholder="e.g. NCBA Bank"></div>
-<div class="form-group"><label>Account Number</label><input type="text" id="bankAccNo" value="${d.accountNo || ''}" placeholder="Account number"></div>
-<div class="form-group"><label>Initial Balance</label><input type="number" id="bankAccBalance" min="0" step="0.01" value="${d.balance || 0}" placeholder="0.00"></div>
-</div>
-<div style="margin-top:16px;display:flex;gap:8px;justify-content:flex-end;"><button class="btn btn-secondary" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveBankAccount()">Save</button></div>
-`;
-document.getElementById('modalTitle').textContent = data ? 'Edit Bank Account' : 'Add Bank Account';
-document.getElementById('modalOverlay').classList.remove('hidden');
+function showBankAccountModal(accountData = null) {
+    const title = accountData ? 'Edit Bank Account' : 'Add Bank Account';
+    const id = accountData ? accountData.id : '';
+    const modalBody = `
+        <form id="bankForm" style="display:flex;flex-direction:column;gap:16px;">
+            <!-- Hidden ID field to know if we are creating or editing -->
+            <input type="hidden" id="bankAccountId" value="${id}">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                <div class="form-group">
+                    <label>Account Name (e.g. NCBA ACCOUNT)</label>
+                    <input type="text" id="bankAccountName" value="${accountData?.accountName || ''}" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label>Bank Name (e.g. NCBA)</label>
+                    <input type="text" id="bankName" value="${accountData?.bankName || ''}" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label>Account Number</label>
+                    <input type="text" id="bankAccountNumber" value="${accountData?.accountNumber || ''}" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label>Current / Initial Balance (KES)</label>
+                    <input type="number" id="bankBalance" value="${accountData?.balance || ''}" step="0.01" min="0" class="form-control" required>
+                </div>
+            </div>
+        </form>
+        <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px;border-top:1px solid var(--border);padding-top:16px;">
+            <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+            <button class="btn btn-primary" onclick="saveBankAccount()">${accountData ? 'Update Account' : 'Save Account'}</button>
+        </div>
+    `;
+    openModal(title, modalBody);
 }
 
 function saveBankAccount() {
-const id = document.getElementById('bankId').value;
-const name = document.getElementById('bankAccName').value.trim();
-const bank = document.getElementById('bankAccBank').value.trim();
-const accountNo = document.getElementById('bankAccNo').value.trim();
-const balance = parseFloat(document.getElementById('bankAccBalance').value) || 0;
-if (!name) { showToast('Please enter account name.', 'error'); return; }
-const acc = { id: id || genId('bank_'), name, bank, accountNo, balance, createdAt: id ? undefined : new Date().toISOString() };
-StorageService.put('bankAccounts', acc);
-logActivity('bank', `Bank account ${id ? 'updated' : 'added'}: ${name}`);
-showToast('Bank account saved successfully.', 'success');
-closeModal();
-renderBankAccounts();
-updateNavBadges();
+    // Read the hidden ID field
+    const id = document.getElementById('bankAccountId').value;
+    const accountName = document.getElementById('bankAccountName').value.trim();
+    const bankName = document.getElementById('bankName').value.trim();
+    const accountNumber = document.getElementById('bankAccountNumber').value.trim();
+    const balance = parseFloat(document.getElementById('bankBalance').value) || 0;
+
+    if(!accountName || !bankName) { showToast('Please fill in required fields.', 'error'); return; }
+
+    // If ID exists, use it. If not, generate a new one.
+    const accountData = {
+        id: id || genId('acc_'),
+        accountName: accountName,
+        bankName: bankName,
+        accountNumber: accountNumber || 'N/A',
+        balance: balance,
+        createdAt: new Date().toISOString()
+    };
+
+    StorageService.put('bankAccounts', accountData);
+    logActivity('bank', id ? `Bank account updated: ${accountName}` : `Bank account added: ${accountName}`);
+
+    closeModal();
+    renderBankAccounts();
+    showToast(id ? 'Bank account updated successfully!' : 'Bank account saved successfully!', 'success');
 }
 
 function editBankAccount(id) {
-const acc = DB.bankAccounts.find(x => x.id === id);
-if (acc) showBankAccountModal(acc);
+    const account = DB.bankAccounts.find(acc => acc.id === id);
+    if (account) {
+        showBankAccountModal(account);
+    } else {
+        showToast('Account not found.', 'error');
+    }
 }
 
 function deleteBankAccount(id) {
-if (!confirm('Delete this bank account?')) return;
-StorageService.delete('bankAccounts', id);
-logActivity('bank', `Bank account deleted: ${id}`);
-showToast('Bank account deleted.', 'info');
-renderBankAccounts();
-updateNavBadges();
+    if (!confirm('Are you sure you want to permanently delete this bank account and its transaction history?')) return;
+    StorageService.delete('bankAccounts', id);
+    showToast('Bank account deleted.', 'info');
+    renderBankAccounts();
 }
 
 /* ============================================================
@@ -3102,6 +3603,61 @@ const wb = XLSX.utils.book_new();
 XLSX.utils.book_append_sheet(wb, ws, filename);
 XLSX.writeFile(wb, `${filename}_${DateHelper.today()}.xlsx`);
 showToast(`Exported ${data.length} records.`, 'success');
+}
+// ============================================================
+// EXPORT SALES TO EXCEL - Itemized by Drug
+// ============================================================
+function exportSalesToExcel() {
+    const sales = DB.sales;
+    if (!sales || sales.length === 0) {
+        showToast('No sales data to export.', 'info');
+        return;
+    }
+
+    // Define headers matching your request
+    const rows = [
+        ['DRUG', 'QUANTITY', 'PRICE PER UNIT (Ksh)', 'TOTAL (Ksh)', 'MODE OF PAYMENT', 'REFERENCE NUMBER']
+    ];
+
+    // Loop through each sale transaction
+    sales.forEach(s => {
+        // If the sale has a 'lines' array, iterate over each drug sold
+        const lines = s.lines || [];
+        if (lines.length === 0) {
+            // If a sale has no lines (edge case), still add a row to show the payment
+            rows.push([
+                'No item data', 
+                '', 
+                '', 
+                s.total || 0, 
+                s.paymentMethod || 'N/A', 
+                s.reference || 'N/A'
+            ]);
+        } else {
+            lines.forEach(l => {
+                rows.push([
+                    l.productName || l.description || 'Unknown Drug',
+                    l.qty || 0,
+                    l.rate || l.price || 0,
+                    l.amount || (l.qty * l.rate) || 0,
+                    s.paymentMethod || 'N/A',
+                    s.reference || 'N/A'
+                ]);
+            });
+        }
+    });
+
+    // Create and download the Excel file
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    XLSX.utils.book_append_sheet(wb, ws, 'Sales Items');
+    
+    // Generate a filename with today's date
+    const today = new Date().toISOString().slice(0, 10);
+    const filename = `PharmTrack_Sales_Items_${today}.xlsx`;
+    
+    XLSX.writeFile(wb, filename);
+    showToast(`Sales exported successfully as ${filename}`, 'success');
 }
 
 /* ============================================================
