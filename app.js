@@ -1,47 +1,13 @@
 /* ============================================================
 STORAGE SERVICE - Unlimited storage
 ============================================================ */
-/* ============================================================
-FIREBASE SERVICE - Direct Cloud Sync (No Node.js required)
-============================================================ */
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-app.js";
-import { getDatabase, ref, set, get, remove } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-database.js";
-
-const firebaseConfig = {
-  apiKey: "AIzaSyDInX4rFSX6iR_E9zlaZ8zezhAriFu5T2c",
-  authDomain: "pharmtrack-dda5b.firebaseapp.com",
-  databaseURL: "https://pharmtrack-dda5b-default-rtdb.firebaseio.com",
-  projectId: "pharmtrack-dda5b",
-  storageBucket: "pharmtrack-dda5b.firebasestorage.app",
-  messagingSenderId: "832368803604",
-  appId: "1:832368803604:web:4309b9e74836d5c07d4c01",
-  measurementId: "G-WB6X6QW84S"
-};
-
-const app = initializeApp(firebaseConfig);
-const database = getDatabase(app);
-
 const StorageService = {
-    getUserEmail() {
-        return currentUser?.email?.replace(/\./g, '_') || 'guest';
-    },
-
-    async put(table, item) {
-        const userEmail = this.getUserEmail();
-        await set(ref(database, `users/${userEmail}/${table}/${item.id}`), item);
-    },
-
-    async getAll(table) {
-        const userEmail = this.getUserEmail();
-        const snapshot = await get(ref(database, `users/${userEmail}/${table}`));
-        const data = snapshot.val();
-        return data ? Object.values(data) : [];
-    },
-
-    async delete(table, id) {
-        const userEmail = this.getUserEmail();
-        await remove(ref(database, `users/${userEmail}/${table}/${id}`));
-    }
+prefix: 'pharmtrack_',
+getAll(key) { try { return JSON.parse(localStorage.getItem(this.prefix + key) || '[]'); } catch(e) { return []; } },
+get(key, id) { return this.getAll(key).find(item => item.id === id) || null; },
+put(key, item) { const all = this.getAll(key); const idx = all.findIndex(x => x.id === item.id); if (idx >= 0) all[idx] = item; else all.push(item); localStorage.setItem(this.prefix + key, JSON.stringify(all)); },
+delete(key, id) { const all = this.getAll(key).filter(x => x.id !== id); localStorage.setItem(this.prefix + key, JSON.stringify(all)); },
+clear(key) { localStorage.removeItem(this.prefix + key); }
 };
 
 /* ============================================================
@@ -199,12 +165,10 @@ document.getElementById('unlockProgressFill').style.width = '0%';
 }
 
 function showSetupScreen() { 
-    document.getElementById('setupForm').classList.add('active'); 
-    document.getElementById('unlockForm').classList.remove('active'); 
-    document.getElementById('passcodeSubtitle').textContent = 'Create your passcode to get started';
-    // 🚨 THIS LINE MAKES THE GOOGLE BUTTON APPEAR
-    document.getElementById('googleLoginContainer').style.display = 'block';
-    hideUnlockLoading();
+document.getElementById('setupForm').classList.add('active'); 
+document.getElementById('unlockForm').classList.remove('active'); 
+document.getElementById('passcodeSubtitle').textContent = 'Create your passcode to get started';
+hideUnlockLoading();
 }
 function showUnlockScreen() { 
 document.getElementById('unlockForm').classList.add('active'); 

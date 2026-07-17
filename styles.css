@@ -375,18 +375,3 @@ transition: width 0.3s ease;
 .main-content { margin-left: 0 !important; }
 .page-content { padding: 0 !important; }
 }
-
-/* SAFELY MOVED DROPDOWN STYLING (Fixes VS Code errors) */
-.filter-select {
-    padding: 8px 32px 8px 12px;
-    background: var(--surface);
-    border: 1px solid var(--border-strong);
-    border-radius: var(--radius);
-    font-size: 13px;
-    color: var(--text);
-    cursor: pointer;
-    appearance: none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23475569' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: right 10px center;
-}
